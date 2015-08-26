@@ -34,15 +34,17 @@ io.sockets.on('connection', function(socket) {
         client_id: socket.id
       };
 
+      // Send list of peers to registering client
+      var peers = [];
+      _.filter(hosts, function(host, idx) {
+        if (idx != socket.id) peers.push(idx);
+      });
+
+      // Attach peer list
+      hosts[socket.id].init.peers = peers;
+
       // Send registration to client
       socket.emit('ready', hosts[socket.id].init);
-    }
-
-    // Alert new peers
-    for (var socket_id in hosts) {
-      if (socket_id !== socket.id) {
-        hosts[socket_id].socket.emit('peer', {peer_id: socket.id, client_id: socket_id});
-      }
     }
   });
 
@@ -50,6 +52,7 @@ io.sockets.on('connection', function(socket) {
    * Listen on request to deregister client.
    */
   socket.on('disconnect', function() {
+    socket.broadcast.emit('peer_disconnect', socket.id);
     delete hosts[socket.id];
   });
 

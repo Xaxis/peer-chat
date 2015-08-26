@@ -6,20 +6,22 @@ define([
   'underscore',
   'backbone',
   'peersock',
-  'text!../templates/users.tpl.html',
-  '../collections/UsersCollection'
+  '../collections/UsersCollection',
+  'text!../templates/UserListItem.tpl.html'
 ], function(
   $,
   _,
   Backbone,
   PeerSock,
-  UsersTemplate,
-  UsersCollection
+  UsersCollection,
+  tplUserListItem
 ) {
   var UsersView = Backbone.View.extend({
     el: $('body'),
 
-    module_template: _.template(UsersTemplate),
+    templates: {
+      userListItem: _.template(tplUserListItem)
+    },
 
     events: {
     },
@@ -33,7 +35,11 @@ define([
       _.bindAll(this,
         'registerClient',
         'registerPeer',
-        'connectToPeer'
+        'connectToPeer',
+        'getPeerConnections',
+        'addUserToList',
+        'removeFromUserList',
+        'messageCommandParser'
       );
 
       // Initialize model collection
@@ -58,11 +64,14 @@ define([
      *
      * @param client_id
      * @param peer_id
+     * @param connecting
      */
-    registerPeer: function( client_id, peer_id, direction ) {
-      var client_model = this.collection.find(function(model) {
-        return model.get('client_id') == client_id;
-      });
+    registerPeer: function( client_id, peer_id, connecting ) {
+      var
+        self                = this,
+        client_model        = this.collection.find(function(model) {
+          return model.get('client_id') == client_id;
+        });
 
       // Reference client/peer PeerSock container object
       var ps = {};
@@ -83,34 +92,22 @@ define([
 
       // Initialize peer connection w/ data channel
       p2p.newListeningChannel({
-        channel_id: 'peer_chat_' + (direction ? peer_id : client_id),
-        //channel_id: 'peer_chat_',
+        channel_id: connecting ? 'peer_chat_' + peer_id + '_' + client_id : 'peer_chat_' + client_id + '_' + peer_id,
         onMessage: function(c) {
-          console.log('New message from peer!', c.data);
+          var msg = JSON.parse(c.data);
+
+          // Parse incoming messages
+          self.messageCommandParser(msg.command, msg.data);
+
+          // Send confirmation connection message
+          c.channel.send(JSON.stringify({
+            command: 'connect',
+            data: {
+              peer_id: client_id
+            }
+          }));
         }
       });
-
-      if (!direction) {
-        p2p.startListeningChannel({
-          channel_id: 'peer_chat_' + (direction ? peer_id : client_id),
-          client_id: client_id,
-          peer_id: peer_id,
-
-          // Send message to peer
-          onOpen: function(c) {
-            c.channel.send(JSON.stringify({
-              msg: 'Message from peer: ' + client_id
-            }));
-          },
-
-          // Handle message from peer
-          onMessage: function(c) {
-            console.log(c.data);
-          }
-        });
-      }
-
-      console.log(client_model.get('connections'));
     },
 
     /**
@@ -119,30 +116,84 @@ define([
      * @param client_id
      */
     connectToPeer: function( client_id, peer_id ) {
-      var client_model = this.collection.find(function(model) {
+      var
+        self                = this,
+        client_model        = this.collection.find(function(model) {
         return model.get('client_id') == client_id;
       });
 
       // Reference PeerSock object
       var p2p = client_model.get('connections')[peer_id];
 
+      //
       p2p.startListeningChannel({
-        channel_id: 'peer_chat_',
+        channel_id: 'peer_chat_' + peer_id + '_' + client_id,
         client_id: client_id,
         peer_id: peer_id,
 
-        // Send message to peer
+        // Send connecting message to peer
         onOpen: function(c) {
           c.channel.send(JSON.stringify({
-            msg: 'Message from peer: ' + client_id
+            command: 'connect',
+            data: {
+              peer_id: client_id
+            }
           }));
         },
 
         // Handle message from peer
         onMessage: function(c) {
-          console.log(c.data);
+          var msg = JSON.parse(c.data);
+
+          // Parse incoming messages
+          self.messageCommandParser(msg.command, msg.data);
         }
       });
+    },
+
+    /**
+     *
+     */
+    getPeerConnections: function( client_id ) {
+      var client_model = this.collection.find(function(model) {
+        return model.get('client_id') == client_id;
+      });
+      return client_model.get('connections');
+    },
+
+    /**
+     *
+     * @param peer_id
+     */
+    addUserToList: function( peer_id ) {
+      $('.user-list').append(this.templates.userListItem({peer_id: peer_id}));
+    },
+
+    /**
+     *
+     * @param peer_id
+     */
+    removeFromUserList: function( peer_id ) {
+      $('[data-peer-id="'+ peer_id +'"]').remove();
+    },
+
+    /**
+     *
+     * @param command
+     * @param data
+     */
+    messageCommandParser: function( command, data ) {
+      switch (command) {
+
+        // Connection establishment
+        case 'connect' :
+          this.addUserToList(data.peer_id);
+          break;
+
+        // Channel keep-alive ping
+        case 'ping' :
+          break;
+      }
     }
 
   });

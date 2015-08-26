@@ -42,39 +42,32 @@ define([
         socket.emit('register', {ready: true});
 
         // Reference PeerSock (for signaling interface)
-        var ps = PeerSock({socket: socket});
+        var signal = PeerSock({socket: socket}).signal;
 
-
-        // 1) Each client receives registration upon page load
+        // Each client receives registration upon page load
         socket.on('ready', function( info ) {
-          console.log('Registering client: ', info.client_id);
+          console.log('Registering client: ', info.client_id, info);
           usersView.registerClient(socket, info.client_id);
-        });
+          usersView.addUserToList(info.client_id);
 
-
-        // 2) Server "new peer" message
-        socket.on('peer', function( info ) {
-          //console.log('Waiting for connection from peer: ', info.peer_id);
-
-          // Create new PeerSock connection object for new peer
-          usersView.registerPeer(info.client_id, info.peer_id, true);
-
-          // Send message to new peer, telling it to connect
-          ps.signal.send('peer_connect', info.peer_id, info.client_id, {
-            test: 'test'
+          // Iterate through active hosts
+          _.each(info.peers, function(peer_id) {
+            usersView.registerPeer(info.client_id, peer_id);
+            signal.send('peer_connect', peer_id, info.client_id, {
+              command: 'connect'
+            });
           });
         });
 
+        // Handle connection requests from peer
+        signal.onmessage('peer_connect', function( msg ) {
+          usersView.registerPeer(msg.client_id, msg.peer_id, true);
+          usersView.connectToPeer(msg.client_id, msg.peer_id);
+        });
 
-        // 3) "time to connect" message sent from peer
-        ps.signal.onmessage('peer_connect', function( info ) {
-          //console.log('Connecting w/ peer: ', info.peer_id);
-
-          // Create PeerSock object that matches one previously created by peer
-          usersView.registerPeer(info.client_id, info.peer_id, false);
-
-          // Initialize connection with peer
-          //usersView.connectToPeer(info.client_id, info.peer_id);
+        // Handle peer disconnects
+        signal.onmessage('peer_disconnect', function( peer_id ) {
+          usersView.removeFromUserList(peer_id);
         });
       }
     };
