@@ -1,0 +1,36 @@
+//--------
+// Layout
+//
+// Core/over arching layout structures defining sitewide zones
+
+// Application container
+.peer-chat {
+  min-width: 480px;
+  padding: $fg-gutter;
+  overflow: auto;
+  border: 1px solid $default-border-color;
+
+  // Primary columns
+  .pc-col {
+    height: 100%;
+    border: 1px solid $default-border-color;
+  }
+  .pc-col-1 {
+    @include fg-col($mod: '3/4');
+  }
+  .pc-col-2 {
+    @include fg-col($mod: '1/4');
+  }
+
+  // Chat elements
+  .pc-window {
+    height: 480px;
+  }
+  .pc-text-input {
+    width: 100%;
+    border: 1px solid $default-border-color;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+}
