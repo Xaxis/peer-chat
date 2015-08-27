@@ -5,7 +5,7 @@
 
 // Application container
 .peer-chat {
-  min-width: 480px;
+  min-width: 380px;
   padding: $fg-gutter;
   overflow: auto;
   border: 1px solid $default-border-color;
@@ -64,5 +64,6 @@
     border-left: none;
     border-right: none;
     border-bottom: none;
+    resize: none;
   }
 }

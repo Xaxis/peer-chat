@@ -5226,7 +5226,7 @@ body {
   max-width: 960px; }
 
 .peer-chat {
-  min-width: 480px;
+  min-width: 380px;
   padding: 20px;
   overflow: auto;
   border: 1px solid #dbdada; }
@@ -5303,4 +5303,5 @@ body {
     border: 1px solid #dbdada;
     border-left: none;
     border-right: none;
-    border-bottom: none; }
+    border-bottom: none;
+    resize: none; }

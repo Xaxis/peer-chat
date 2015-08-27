@@ -26,7 +26,6 @@
       'modernizr-tests':    'libs/native/modernizr-tests/modernizr-tests'
     },
     shim: {
-      'jquery.eye': ['jquery'],
       'jquery.devgrid': ['jquery'],
       'jquery.eqheight': ['jquery'],
       peersock: {
