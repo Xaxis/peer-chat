@@ -9,6 +9,8 @@ define([
       return {
         socket: null,
         client_id: 0,
+        username_set: false,
+        username: 'anonymous',
         connections: {}
       };
     }

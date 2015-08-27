@@ -6,7 +6,6 @@ define([
   'modernizr-tests',
   'router',
   'socketio',
-  'core/global/views/GlobalView',
   'core/users/views/UsersView',
   'peersock'
 ], function(
@@ -14,7 +13,6 @@ define([
   ModernizrTests,
   Router,
   io,
-  GlobalView,
   UsersView,
   PeerSock
 ) {
@@ -32,7 +30,6 @@ define([
         Router.initialize({pushState: true});
 
         // Backbone initializations
-        var globalView = new GlobalView();
         var usersView = new UsersView();
 
         // Build socket

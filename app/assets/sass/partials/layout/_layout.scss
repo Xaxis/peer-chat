@@ -17,6 +17,19 @@
   }
   .pc-col-1 {
     @include fg-col($mod: '3/4');
+    .pc-window {
+      .user-message-item {
+        .user-name {
+        }
+        .user-message {
+        }
+        &.me {
+          .user-name {
+            font-weight: 800;
+          }
+        }
+      }
+    }
   }
   .pc-col-2, .user-list {
     @include fg-col($mod: '1/4');
@@ -27,15 +40,26 @@
       overflow: hidden;
       border-bottom: 1px solid $default-border-color;
       cursor: default;
+      .user-name-change-input {
+        border: 0;
+        padding: 0;
+      }
+      &.me {
+        font-weight: 800;
+      }
     }
   }
 
   // Chat elements
   .pc-window {
     height: 480px;
+    padding: 4px 6px;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
   .pc-text-input {
     width: 100%;
+    padding: 4px 6px;
     border: 1px solid $default-border-color;
     border-left: none;
     border-right: none;

@@ -6,6 +6,7 @@ define([
   'underscore',
   'backbone',
   'peersock',
+  'jquery.eqheight',
   '../collections/UsersCollection',
   'text!../templates/UserListItem.tpl.html',
   'text!../templates/UserMessageItem.tpl.html'
@@ -14,6 +15,7 @@ define([
   _,
   Backbone,
   PeerSock,
+  $eqheight,
   UsersCollection,
   tplUserListItem,
   tplUserMessageItem
@@ -27,7 +29,9 @@ define([
     },
 
     events: {
-      'keypress .pc-text-input': 'textInputHandler'
+      'keypress .pc-text-input': 'chatWindowTextInputHandler',
+      'click .user-list-item.me': 'userListItemNameChange',
+      'keypress .user-list-item.me input': 'userListItemNameChangeConfirm'
     },
 
     client_id: null,
@@ -43,17 +47,23 @@ define([
         'registerPeer',
         'connectToPeer',
         'getPeerConnections',
+        'getClientModel',
         'addUserToList',
         'removeFromUserList',
         'addMessageToWindow',
         'messageCommandParser',
         'sendMessageToPeer',
         'sendMessageToAllPeers',
-        'textInputHandler'
+        'chatWindowTextInputHandler',
+        'userListItemNameChange',
+        'userListItemNameChangeConfirm'
       );
 
       // Initialize model collection
       this.collection = new UsersCollection();
+
+      // Equalize chat interface column heights
+      $('.pc-col-2').eqheight('.pc-col-1');
     },
 
     /**
@@ -84,9 +94,7 @@ define([
     registerPeer: function( client_id, peer_id, connecting ) {
       var
         self                = this,
-        client_model        = this.collection.find(function(model) {
-          return model.get('client_id') == client_id;
-        }),
+        client_model        = this.getClientModel(),
         channel_id          = connecting ? 'peer_chat_' + peer_id + '_' + client_id : 'peer_chat_' + client_id + '_' + peer_id,
         ps                  = {},
         p2p                 = null;
@@ -138,9 +146,7 @@ define([
     connectToPeer: function( client_id, peer_id ) {
       var
         self                = this,
-        client_model        = this.collection.find(function(model) {
-          return model.get('client_id') == client_id;
-        }),
+        client_model        = this.getClientModel(),
         p2p                 = client_model.get('connections')[peer_id];
 
       // Initialize data channel
@@ -186,36 +192,59 @@ define([
     },
 
     /**
+     * Returns the client model object from the collection.
+     *
+     * @returns {*}
+     */
+    getClientModel: function() {
+      var
+        self        = this;
+      return this.collection.find(function(model) {
+        return model.get('client_id') == self.client_id;
+      });
+    },
+
+    /**
      * Adds user list item element to the user list.
      *
      * @param peer_id {String}        The socket id of the peer
      */
     addUserToList: function( peer_id ) {
-      $('.user-list').append(this.templates.userListItem({peer_id: peer_id}));
+      var
+        client_model        = this.getClientModel();
+      $('.user-list').append($(this.templates.userListItem({
+        peer_id: peer_id,
+        username: client_model.get('username')
+      })).addClass(peer_id == this.client_id ? 'me' : ''));
     },
 
     /**
-     * Removes user list item element from the user list (removes element from DOM).
-     * @todo - also remove PeerSock object from client model
-     * @todo - also remove channel keep alive interval from client model
+     * Removes user list item element from the user list (removes element from DOM), removes keep alive "ping" interval,
+     * removes PeerSock object from client model.
+     * @todo - Actually close data channel before removing PeerSock object
      *
      * @param peer_id {String}        The socket id of the peer
      */
     removeFromUserList: function( peer_id ) {
+      var peers = this.getPeerConnections(this.client_id);
+      clearInterval(peers[peer_id].keep_alive);
+      delete peers[peer_id];
       $('[data-peer-id="'+ peer_id +'"]').remove();
     },
 
     /**
      * Appends a user message to the chat window.
      *
-     * @param user {String}
-     * @param message {String}
+     * @param username {String}       User name of peer
+     * @param message {String}        Message from peer
+     * @param id {String}             The socket id of message source
      */
-    addMessageToWindow: function( user, message ) {
-      $('.pc-window').append(this.templates.userMessageItem({
-        user: user,
-        message: message
-      }));
+    addMessageToWindow: function( username, message, id ) {
+      $('.pc-window').append($(this.templates.userMessageItem({
+        username: username,
+        message: message,
+        peer_id: id
+      })).addClass(id == this.client_id ? 'me' : ''));
     },
 
     /**
@@ -239,7 +268,13 @@ define([
 
         // Broadcast message to peers
         case 'group-message' :
-          this.addMessageToWindow(data.user, data.message);
+          this.addMessageToWindow(data.username, data.message, data.id);
+          break;
+
+        // A user has changed their name
+        case 'name-change' :
+          $('.user-list-item[data-peer-id="' + data.id + '"]').html(data.username);
+          $('.user-message-item[data-peer-id="' + data.id + '"]').find('.user-name').html(data.username);
           break;
       }
     },
@@ -247,17 +282,14 @@ define([
     /**
      * Sends a "ping" command over an open data channel effectively keeping a data channel from timing out and closing.
      *
-     * @param channel_id        Id of the data channel to use
-     * @param peer_id           Peer to send ping to
-     * @param speed             The interval at which to send a ping
+     * @param channel_id {String}       Id of the data channel to use
+     * @param peer_id {String}          Peer to send ping to
+     * @param speed {Integer}           The interval at which to send a ping
      * @returns {number}
      */
     channelKeepAlive: function( channel_id, peer_id, speed ) {
       var
-        self                = this,
-        client_model        = this.collection.find(function(model) {
-          return model.get('client_id') == self.client_id;
-        }),
+        client_model        = this.getClientModel(),
         p2p                 = client_model.get('connections')[peer_id];
         p2p.keep_alive      = setInterval(function() {
           p2p.sendOnChannel(channel_id, JSON.stringify({
@@ -273,15 +305,13 @@ define([
     /**
      * Sends a message to a given peer.
      *
+     * @param command {String}        Command string
      * @param peer_id {String}        The socket id of the peer
      * @param message {String}        Message to send
      */
-    sendMessageToPeer: function( peer_id, message ) {
+    sendMessageToPeer: function( command, peer_id, message ) {
       var
-        self                = this,
-        client_model        = this.collection.find(function(model) {
-          return model.get('client_id') == self.client_id;
-        }),
+        client_model        = this.getClientModel(),
         p2p                 = client_model.get('connections')[peer_id];
 
       // Iterate through all data channels
@@ -289,9 +319,10 @@ define([
 
         // Send message
         p2p.sendOnChannel(id, JSON.stringify({
-          command: 'group-message',
+          command: command,
           data: {
-            user: self.client_id,
+            id: client_model.get('client_id'),
+            username: client_model.get('username'),
             message: message
           }
         }));
@@ -301,9 +332,10 @@ define([
     /**
      * Sends a message to all connected peers.
      *
+     * @param command {String}        Command string
      * @param message {String}        The socket id of the peer
      */
-    sendMessageToAllPeers: function( message ) {
+    sendMessageToAllPeers: function( command, message ) {
       var
         self                = this,
         client_model        = this.collection.find(function(model) {
@@ -311,26 +343,69 @@ define([
         }),
         peers               = client_model.get('connections');
       _.each(peers, function(p2p, id) {
-        self.sendMessageToPeer(id, message);
+        self.sendMessageToPeer(command, id, message);
       });
     },
 
     /**
-     * Handles text input.
+     * Handles text input to send to peers.
      *
-     * @param e {Object}      The event object
+     * @param e {Object}      The 'keypress' event object
      */
-    textInputHandler: function( e ) {
+    chatWindowTextInputHandler: function( e ) {
       var
         target        = $(e.target),
         message       = target.val(),
-        key_code     = e.keyCode;
+        key_code      = e.keyCode;
       switch (true) {
         case key_code == 13 :
-          this.addMessageToWindow(this.client_id, message);
-          this.sendMessageToAllPeers(message);
+          this.addMessageToWindow(this.getClientModel().get('username'), message, this.client_id);
+          this.sendMessageToAllPeers('group-message', message);
           target.val('');
           break;
+      }
+    },
+
+    /**
+     * Handles renaming users.
+     *
+     * @param e {Object}        The 'click' event object
+     */
+    userListItemNameChange: function( e ) {
+      e.stopPropagation();
+      var
+        target        = $(e.target),
+        input         = null,
+        client_model  = this.getClientModel(),
+        username      = '',
+        active        = target.data('name-change-active');
+      if (!active) {
+        target.data('name-change-active', true);
+        username = client_model.get('username');
+        input = $('<input class="user-name-change-input" type="text">').val(username);
+        target.html('').append(input);
+        input.focus();
+        input[0].setSelectionRange(username.length, username.length);
+      }
+    },
+
+    /**
+     * Handles confirmation on enter key for user list item name change.
+     *
+     * @param e {Object}        The 'keypress' event object
+     */
+    userListItemNameChangeConfirm: function( e ) {
+      var
+        target        = $(e.target),
+        parent        = target.parent(),
+        client_model  = this.getClientModel(),
+        username      = target.val();
+      if (e.keyCode == 13 && username.length > 0 && username.length < 128) {
+        parent.data('name-change-active', false);
+        parent.html(username);
+        client_model.set('username', username);
+        target.remove();
+        this.sendMessageToAllPeers('name-change', client_model.get('username'));
       }
     }
 
