@@ -52,7 +52,7 @@ define([
 
           // Iterate through active hosts
           _.each(info.peers, function(peer_id) {
-            usersView.registerPeer(info.client_id, peer_id);
+            usersView.registerPeer(info.client_id, peer_id, false);
             signal.send('peer_connect', peer_id, info.client_id, {
               command: 'connect'
             });

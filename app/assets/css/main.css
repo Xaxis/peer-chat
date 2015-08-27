@@ -5255,28 +5255,36 @@ body {
       width: calc(75% - (20px / 2)); }
     html:not(.csscalc) .peer-chat .pc-col-1 {
       width: 74.2%; }
-  .peer-chat .pc-col-2 {
+  .peer-chat .pc-col-2, .peer-chat .user-list {
     position: relative;
-    float: left; }
-    .peer-chat .pc-col-2 {
+    float: left;
+    overflow-y: auto;
+    overflow-x: hidden; }
+    .peer-chat .pc-col-2, .peer-chat .user-list {
       box-sizing: border-box; }
     .peer-chat .pc-col-2:before,
-    .peer-chat .pc-col-2:after {
+    .peer-chat .pc-col-2:after, .peer-chat .user-list:before,
+    .peer-chat .user-list:after {
       content: " ";
       display: table; }
-    .peer-chat .pc-col-2:after {
+    .peer-chat .pc-col-2:after, .peer-chat .user-list:after {
       clear: both; }
-    html.csscalc .peer-chat .pc-col-2 {
+    html.csscalc .peer-chat .pc-col-2, html.csscalc .peer-chat .user-list {
       margin-left: 20px; }
-    html:not(.csscalc) .peer-chat .pc-col-2 {
+    html:not(.csscalc) .peer-chat .pc-col-2, html:not(.csscalc) .peer-chat .user-list {
       margin-left: 1.6%; }
-    html.csscalc .peer-chat .pc-col-2:first-child, html:not(.csscalc) .peer-chat .pc-col-2:first-child {
+    html.csscalc .peer-chat .pc-col-2:first-child, html:not(.csscalc) .peer-chat .pc-col-2:first-child, html.csscalc .peer-chat .user-list:first-child, html:not(.csscalc) .peer-chat .user-list:first-child {
       margin-left: 0; }
-    html.csscalc .peer-chat .pc-col-2 {
+    html.csscalc .peer-chat .pc-col-2, html.csscalc .peer-chat .user-list {
       width: -webkit-calc(25% - (20px / 2));
       width: calc(25% - (20px / 2)); }
-    html:not(.csscalc) .peer-chat .pc-col-2 {
+    html:not(.csscalc) .peer-chat .pc-col-2, html:not(.csscalc) .peer-chat .user-list {
       width: 24.2%; }
+    .peer-chat .pc-col-2 .user-list-item, .peer-chat .user-list .user-list-item {
+      padding: 4px 6px;
+      overflow: hidden;
+      border-bottom: 1px solid #dbdada;
+      cursor: default; }
   .peer-chat .pc-window {
     height: 480px; }
   .peer-chat .pc-text-input {

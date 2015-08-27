@@ -22,7 +22,6 @@ define([
     module_template: _.template(GlobalTemplate),
 
     events: {
-      'keyup .pc-text-input': 'textInputHandler'
     },
 
     /**
@@ -33,23 +32,14 @@ define([
         _this             = this;
 
       // Bind methods
-      _.bindAll(this,
-        'textInputHandler'
-      );
+      //_.bindAll(this,
+      //);
 
       // Initialize equal heights plugin
       $('.pc-col-2').eqheight('.pc-col-1');
 
       // Initialize model collection
       this.collection = new GlobalCollection();
-    },
-
-    /**
-     * Process chat text input.
-     * @param e
-     */
-    textInputHandler: function(e) {
-      console.log('happening');
     }
 
   });

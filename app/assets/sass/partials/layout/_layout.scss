@@ -18,8 +18,16 @@
   .pc-col-1 {
     @include fg-col($mod: '3/4');
   }
-  .pc-col-2 {
+  .pc-col-2, .user-list {
     @include fg-col($mod: '1/4');
+    overflow-y: auto;
+    overflow-x: hidden;
+    .user-list-item {
+      padding: 4px 6px;
+      overflow: hidden;
+      border-bottom: 1px solid $default-border-color;
+      cursor: default;
+    }
   }
 
   // Chat elements
