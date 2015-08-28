@@ -15,6 +15,8 @@
     height: 100%;
     border: 1px solid $default-border-color;
   }
+
+  // Chat window column
   .pc-col-1 {
     @include fg-col($mod: '3/4');
     .pc-window {
@@ -31,6 +33,8 @@
       }
     }
   }
+
+  // User list column
   .pc-col-2, .user-list {
     @include fg-col($mod: '1/4');
     overflow-y: auto;
@@ -50,20 +54,24 @@
     }
   }
 
-  // Chat elements
+  // Chat window
   .pc-window {
-    height: 480px;
+    height: 200px;
     padding: 4px 6px;
     overflow-x: hidden;
     overflow-y: auto;
   }
-  .pc-text-input {
-    width: 100%;
-    padding: 4px 6px;
-    border: 1px solid $default-border-color;
-    border-left: none;
-    border-right: none;
-    border-bottom: none;
-    resize: none;
+
+  // Chat text input
+  .pc-text-input-container {
+    .pc-text-input {
+      width: 100%;
+      padding: 4px 6px;
+      border: 1px solid $default-border-color;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      resize: none;
+    }
   }
 }

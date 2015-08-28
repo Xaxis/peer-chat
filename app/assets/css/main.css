@@ -5293,11 +5293,11 @@ body {
       .peer-chat .pc-col-2 .user-list-item.me, .peer-chat .user-list .user-list-item.me {
         font-weight: 800; }
   .peer-chat .pc-window {
-    height: 480px;
+    height: 200px;
     padding: 4px 6px;
     overflow-x: hidden;
     overflow-y: auto; }
-  .peer-chat .pc-text-input {
+  .peer-chat .pc-text-input-container .pc-text-input {
     width: 100%;
     padding: 4px 6px;
     border: 1px solid #dbdada;

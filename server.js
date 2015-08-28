@@ -5,6 +5,7 @@ var
   port                = 9222,
   app                 = express(),
   hosts               = {},
+  channels            = {},
   server              = null;
 
 // Trust X-Forwarded-* header fields
@@ -21,29 +22,37 @@ io.sockets.on('connection', function(socket) {
    * Listen on request to register a client.
    */
   socket.on('register', function(msg) {
+    var
+      channel       = msg.channel || socket.id;
 
-    // Register peer client as ready
+    // Create channel if it doesn't exist
+    if (!channels[channel]) {
+      channels[channel] = {
+        hosts: {}
+      };
+    }
+
+    // Register peer as ready
     if (msg.ready && !(socket.id in hosts)) {
-      hosts[socket.id] = {
+
+      // Build hosts objects referenced by socket id
+      channels[channel].hosts[socket.id] = hosts[socket.id] = {
         socket: socket,
-        client_id: socket.id
+        client_id: socket.id,
+        channel: channel,
+        init: {
+          channel: channel,
+          client_id: socket.id,
+          peers: []
+        }
       };
 
-      // Build registration object
-      hosts[socket.id].init = {
-        client_id: socket.id
-      };
-
-      // Send list of peers to registering client
-      var peers = [];
-      _.filter(hosts, function(host, idx) {
-        if (idx != socket.id) peers.push(idx);
+      // Populate list of peers
+      _.filter(channels[channel].hosts, function(host, idx) {
+        if (idx != socket.id) channels[channel].hosts[socket.id].init.peers.push(idx);
       });
 
-      // Attach peer list
-      hosts[socket.id].init.peers = peers;
-
-      // Send registration to client
+      // Send initialization info to client
       socket.emit('ready', hosts[socket.id].init);
     }
   });
@@ -53,7 +62,10 @@ io.sockets.on('connection', function(socket) {
    */
   socket.on('disconnect', function() {
     socket.broadcast.emit('peer_disconnect', socket.id);
+    var channel = hosts[socket.id].channel;
+    delete channels[channel].hosts[socket.id];
     delete hosts[socket.id];
+
   });
 
   /**

@@ -21,9 +21,9 @@
       peersock:             'libs/vendor/peer-sock/src/peer-sock',
 
       // Native modules
-      util:                 'libs/native/util/util',
       devgrid:              'libs/native/devgrid/devgrid',
-      'modernizr-tests':    'libs/native/modernizr-tests/modernizr-tests'
+      'modernizr-tests':    'libs/native/modernizr-tests/modernizr-tests',
+      ux:                   'libs/native/ux/ux'
     },
     shim: {
       'jquery.devgrid': ['jquery'],

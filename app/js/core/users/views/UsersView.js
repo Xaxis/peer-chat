@@ -6,7 +6,6 @@ define([
   'underscore',
   'backbone',
   'peersock',
-  'jquery.eqheight',
   '../collections/UsersCollection',
   'text!../templates/UserListItem.tpl.html',
   'text!../templates/UserMessageItem.tpl.html'
@@ -15,7 +14,6 @@ define([
   _,
   Backbone,
   PeerSock,
-  $eqheight,
   UsersCollection,
   tplUserListItem,
   tplUserMessageItem
@@ -61,9 +59,6 @@ define([
 
       // Initialize model collection
       this.collection = new UsersCollection();
-
-      // Equalize chat interface column heights
-      $('.pc-col-2').eqheight('.pc-col-1');
     },
 
     /**
@@ -102,7 +97,7 @@ define([
       // Configure a new PeerSock object
       ps[peer_id] = PeerSock({
         socket: client_model.get('socket'),
-        debug: false
+        debug: true
       });
 
       // Update client model w/ new PeerSock object
@@ -128,7 +123,8 @@ define([
             c.channel.send(JSON.stringify({
               command: 'connect',
               data: {
-                peer_id: client_id
+                peer_id: client_id,
+                username: client_model.get('username')
               }
             }));
           }
@@ -160,7 +156,8 @@ define([
           c.channel.send(JSON.stringify({
             command: 'connect',
             data: {
-              peer_id: client_id
+              peer_id: client_id,
+              username: client_model.get('username')
             }
           }));
 
@@ -208,28 +205,29 @@ define([
      * Adds user list item element to the user list.
      *
      * @param peer_id {String}        The socket id of the peer
+     * @param username {String}       The user name of the peer
      */
-    addUserToList: function( peer_id ) {
-      var
-        client_model        = this.getClientModel();
+    addUserToList: function( peer_id, username ) {
       $('.user-list').append($(this.templates.userListItem({
         peer_id: peer_id,
-        username: client_model.get('username')
+        username: username
       })).addClass(peer_id == this.client_id ? 'me' : ''));
     },
 
     /**
      * Removes user list item element from the user list (removes element from DOM), removes keep alive "ping" interval,
      * removes PeerSock object from client model.
-     * @todo - Actually close data channel before removing PeerSock object
      *
      * @param peer_id {String}        The socket id of the peer
      */
     removeFromUserList: function( peer_id ) {
       var peers = this.getPeerConnections(this.client_id);
+      _.each(peers[peer_id].channels, function(channel) {
+        channel.channel.close();
+      });
       clearInterval(peers[peer_id].keep_alive);
       delete peers[peer_id];
-      $('[data-peer-id="'+ peer_id +'"]').remove();
+      $('.user-list [data-peer-id="'+ peer_id +'"]').remove();
     },
 
     /**
@@ -258,7 +256,7 @@ define([
 
         // Connection establishment
         case 'connect' :
-          this.addUserToList(data.peer_id);
+          this.addUserToList(data.peer_id, data.username);
           break;
 
         // Channel keep-alive ping
@@ -362,6 +360,7 @@ define([
           this.addMessageToWindow(this.getClientModel().get('username'), message, this.client_id);
           this.sendMessageToAllPeers('group-message', message);
           target.val('');
+          return false;
           break;
       }
     },
