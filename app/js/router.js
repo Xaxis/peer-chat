@@ -63,7 +63,8 @@ define([
   var loadChannel = function( channel, router ) {
 
     // Build socket
-    var socket = io.connect('http://ec2-52-26-44-139.us-west-2.compute.amazonaws.com:9222');
+    //var socket = io.connect('//localhost:9222');
+    var socket = io.connect('http://vcdn.io:9222');
 
     // Register
     socket.emit('register', {

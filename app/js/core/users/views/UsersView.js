@@ -96,6 +96,17 @@ define([
 
       // Configure a new PeerSock object
       ps[peer_id] = PeerSock({
+
+        // Stun server configuration
+        /*
+        rtc_config: {
+          iceServers: [
+            {url: "stun:23.21.150.121"},
+            {url: "stun:stun.l.google.com:19302"}
+          ]
+        },
+        */
+
         socket: client_model.get('socket'),
         debug: true
       });
