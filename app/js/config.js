@@ -17,8 +17,8 @@
       text:                 'libs/vendor/requirejs-text/text',
       underscore:           'libs/vendor/underscore/underscore',
       backbone:             'libs/vendor/backbone/backbone',
-      //socketio:             '//localhost:9222/socket.io/socket.io',
-      socketio:             'http://vcdn.io:9222/socket.io/socket.io.js',
+      socketio:             '//localhost:9222/socket.io/socket.io',
+      //socketio:             'http://vcdn.io:9222/socket.io/socket.io.js',
       peersock:             'libs/vendor/peer-sock/src/peer-sock',
 
       // Native modules

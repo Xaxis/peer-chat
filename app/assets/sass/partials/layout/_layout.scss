@@ -10,6 +10,59 @@
   overflow: auto;
   border: 1px solid $default-border-color;
 
+  // Contains indicators of open channels
+  .pc-channels-overview {
+    margin-bottom: $fg-gutter;
+    max-height: 120px;
+    position: relative;
+    overflow-y: auto;
+    .pc-channel-label,
+    .pc-channel-label--add-channel {
+      padding: 2px 4px;
+      float: left;
+      margin-right: 10px;
+      margin-bottom: 5px;
+      border: 2px solid $default-border-color;
+      border-radius: 4px;
+      background: $default-bg-color;
+      cursor: pointer;
+      font-size: 0.80rem;
+      &:hover {
+
+      }
+      &.active {
+        border: 2px solid $heros-blue;
+      }
+      &.control {
+        font-weight: bold;
+      }
+      .text {
+      }
+      .button {
+        display: inline-block;
+        margin-left: 6px;
+        color: $heros-blue;
+        font-family: "FontAwesome";
+        font-weight: lighter;
+        transition: color $trans-speed $trans-ease;
+        &:hover {
+          color: $my-black;
+          transition: color $trans-speed $trans-ease;
+        }
+      }
+    }
+  }
+
+  // Contains open channel windows
+  .pc-channels-container {
+    .pc-channel {
+      display: none;
+      &.active {
+        display: block;
+      }
+    }
+  }
+
   // Primary columns
   .pc-col {
     height: 100%;
@@ -21,6 +74,8 @@
     @include fg-col($mod: '3/4');
     .pc-window {
       .user-message-item {
+        .user-col {
+        }
         .user-name {
         }
         .user-message {

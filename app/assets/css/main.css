@@ -5211,7 +5211,8 @@ html, body {
 body {
   font-family: 'Open Sans Light';
   font-size: 100%/1.5;
-  padding: 20px; }
+  padding: 20px;
+  color: #030301; }
 
 .sitewide {
   margin: 0 auto;
@@ -5230,6 +5231,44 @@ body {
   padding: 20px;
   overflow: auto;
   border: 1px solid #dbdada; }
+  .peer-chat .pc-channels-overview {
+    margin-bottom: 20px;
+    max-height: 120px;
+    position: relative;
+    overflow-y: auto; }
+    .peer-chat .pc-channels-overview .pc-channel-label,
+    .peer-chat .pc-channels-overview .pc-channel-label--add-channel {
+      padding: 2px 4px;
+      float: left;
+      margin-right: 10px;
+      margin-bottom: 5px;
+      border: 2px solid #dbdada;
+      border-radius: 4px;
+      background: #e8e8ea;
+      cursor: pointer;
+      font-size: 0.80rem; }
+      .peer-chat .pc-channels-overview .pc-channel-label.active,
+      .peer-chat .pc-channels-overview .pc-channel-label--add-channel.active {
+        border: 2px solid #4e7ea0; }
+      .peer-chat .pc-channels-overview .pc-channel-label.control,
+      .peer-chat .pc-channels-overview .pc-channel-label--add-channel.control {
+        font-weight: bold; }
+      .peer-chat .pc-channels-overview .pc-channel-label .button,
+      .peer-chat .pc-channels-overview .pc-channel-label--add-channel .button {
+        display: inline-block;
+        margin-left: 6px;
+        color: #4e7ea0;
+        font-family: "FontAwesome";
+        font-weight: lighter;
+        transition: color 0.2s linear; }
+        .peer-chat .pc-channels-overview .pc-channel-label .button:hover,
+        .peer-chat .pc-channels-overview .pc-channel-label--add-channel .button:hover {
+          color: #030301;
+          transition: color 0.2s linear; }
+  .peer-chat .pc-channels-container .pc-channel {
+    display: none; }
+    .peer-chat .pc-channels-container .pc-channel.active {
+      display: block; }
   .peer-chat .pc-col {
     height: 100%;
     border: 1px solid #dbdada; }

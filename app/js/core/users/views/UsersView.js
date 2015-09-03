@@ -6,7 +6,10 @@ define([
   'underscore',
   'backbone',
   'peersock',
+  'jquery.eqheight',
   '../collections/UsersCollection',
+  'text!../templates/UserChannel.tpl.html',
+  'text!../templates/UserChannelLabel.tpl.html',
   'text!../templates/UserListItem.tpl.html',
   'text!../templates/UserMessageItem.tpl.html'
 ], function(
@@ -14,7 +17,10 @@ define([
   _,
   Backbone,
   PeerSock,
+  $eqheight,
   UsersCollection,
+  tplUserChannel,
+  tplUserChannelLabel,
   tplUserListItem,
   tplUserMessageItem
 ) {
@@ -22,11 +28,19 @@ define([
     el: $('body'),
 
     templates: {
+      userChannel: _.template(tplUserChannel),
+      userChannelLabel: _.template(tplUserChannelLabel),
       userListItem: _.template(tplUserListItem),
       userMessageItem: _.template(tplUserMessageItem)
     },
 
     events: {
+      'click .pc-channel-label': 'userChannelLabelSwitch',
+      'click .pc-channel-label .button': 'userChannelLabelClose',
+      'blur .pc-channel-label--add-channel .text': 'addUserChannelBlur',
+      'focus .pc-channel-label--add-channel .text': 'addUserChannelFocus',
+      'keypress .pc-channel-label--add-channel .text': 'addUserChannelInput',
+      'click .pc-channel-label--add-channel .button': 'addUserChannelButton',
       'keypress .pc-text-input': 'chatWindowTextInputHandler',
       'click .user-list-item.me': 'userListItemNameChange',
       'keypress .user-list-item.me input': 'userListItemNameChangeConfirm'
@@ -34,13 +48,26 @@ define([
 
     client_id: null,
 
+    router: null,
+
     /**
-     * Initialize collection
+     * Initializes the view.
+     *
+     * @param router {Object}       Reference to backbone router
      */
-    initialize: function() {
+    initialize: function( router ) {
 
       // Bind methods
       _.bindAll(this,
+        'addUserChannelElm',
+        'addUserChannelLabel',
+        'userChannelLabelClose',
+        'userChannelLabelSwitch',
+        'addUserChannelBlur',
+        'addUserChannelFocus',
+        'addUserChannelInput',
+        'addUserChannelButton',
+        'removeUserChannelElms',
         'registerClient',
         'registerPeer',
         'connectToPeer',
@@ -48,6 +75,7 @@ define([
         'getClientModel',
         'addUserToList',
         'removeFromUserList',
+        'removeFromChannelUserList',
         'addMessageToWindow',
         'messageCommandParser',
         'sendMessageToPeer',
@@ -57,8 +85,158 @@ define([
         'userListItemNameChangeConfirm'
       );
 
+      // Reference the app router
+      this.router = router;
+
       // Initialize model collection
       this.collection = new UsersCollection();
+    },
+
+    /**
+     * Adds user channel elements to the DOM.
+     *
+     * @param channel {String}        The channel id
+     */
+    addUserChannelElm: function( channel ) {
+      var
+        channel_elm       = $('[data-channel-id="' + channel+ '"]');
+      $('.pc-channel').removeClass('active');
+      if (!channel_elm.length) {
+        $('.pc-channels-container').append($(this.templates.userChannel({
+          channelid: channel
+        })).addClass('active'));
+
+        // Resize channel columns
+        // @todo - determine how to make this into a custom event in ux.js, that is then triggered from here
+        $('.pc-col-2').eqheight('.pc-col-1');
+      } else {
+        channel_elm.addClass('active');
+      }
+    },
+
+    /**
+     * Adds user channel label elements to the DOM.
+     *
+     * @param channel {String}        The channel id
+     */
+    addUserChannelLabel: function( channel ) {
+      var
+        channel_elm       = $('[data-channel-label-id="' + channel+ '"]');
+      $('.pc-channel-label').removeClass('active');
+      if (!channel_elm.length) {
+        $('.pc-channel-label--add-channel').after($(this.templates.userChannelLabel({
+          channelid: channel
+        })).addClass('active'));
+      } else {
+        channel_elm.addClass('active');
+      }
+    },
+
+    /**
+     * Handles switching between channels.
+     *
+     * @param e {Object}        The 'click' event object
+     */
+    userChannelLabelSwitch: function( e ) {
+      var
+        target        = $(e.currentTarget),
+        channel       = target.find('.channelid').html();
+      this.router.navigate(channel, {trigger: true, replace: true});
+    },
+
+    /**
+     * Handled closing a given channel.
+     *
+     * @param e {Object}        The 'click' event object
+     */
+    userChannelLabelClose: function( e ) {
+      e.stopPropagation();
+      var
+        target              = $(e.currentTarget),
+        channel             = target.prev('.text').html(),
+        prev_channel        = target.closest('.pc-channel-label').next(),
+        prev_id             = prev_channel.attr('data-channel-label-id');
+
+      // Remove channel elements
+      this.removeUserChannelElms(channel);
+
+      // Close the channel
+      this.router.navigate(channel + '/close/' + this.client_id, {trigger: true, replace: true});
+
+      // Redirect to appropriate location
+      if (prev_channel.length) {
+        this.router.navigate(prev_id, {trigger: true, replace: true});
+      } else {
+        this.router.navigate('#', {trigger: true, replace: true});
+      }
+    },
+
+    /**
+     * Handles replacing default text when button is no longer active.
+     *
+     * @param e {Object}        The 'blur' event object
+     */
+    addUserChannelBlur: function( e ) {
+      var
+        target        = $(e.currentTarget),
+        text          = target.attr('data-default-text');
+      target.html(text);
+    },
+
+    /**
+     * Handles erasing all text of the "input" on focus.
+     *
+     * @param e {Object}        The 'focus' event object
+     */
+    addUserChannelFocus: function( e ) {
+      var
+        target        = $(e.currentTarget);
+      target.html('');
+    },
+
+    /**
+     * Handles keyboard input for add new channel button.
+     *
+     * @param e {Object}        The 'focus' event object
+     */
+    addUserChannelInput: function( e ) {
+      var
+        target         = $(e.currentTarget),
+        channel        = target.html(),
+        key_code       = e.keyCode;
+      if (key_code == 13) {
+        if (channel.length > 0) {
+          this.router.navigate(channel, {trigger: true, replace: true});
+        }
+        target.trigger('blur');
+        return false;
+      }
+    },
+
+    /**
+     * Handles action to take when the add channel button icon is clicked.
+     *
+     * @param e {Object}        The 'click' event object
+     */
+    addUserChannelButton: function( e ) {
+      var
+        target        = $(e.currentTarget),
+        input         = target.prev('.text');
+      input.trigger('focus');
+    },
+
+    /**
+     * Removes user channel elements from the DOM.
+     *
+     * @param channel {String}        The channel id
+     */
+    removeUserChannelElms: function( channel ) {
+      var
+        chat_window         = $('[data-channel-id="' + channel + '"]'),
+        channel_label       = $('[data-channel-label-id="' +
+        channel + '"]');
+      chat_window.remove();
+      channel_label.remove();
     },
 
     /**
@@ -69,14 +247,18 @@ define([
      */
     registerClient: function( socket, client_id ) {
 
-      // Register client in collection
-      this.collection.add({
-        socket: socket,
-        client_id: client_id
-      });
+      // Proceed if not already registered
+      if (!this.client_id) {
 
-      // Reference client id "globally"
-      this.client_id = client_id;
+        // Register client in collection
+        this.collection.add({
+          socket: socket,
+          client_id: client_id
+        });
+
+        // Reference client id "globally"
+        this.client_id = client_id;
+      }
     },
 
     /**
@@ -84,63 +266,59 @@ define([
      *
      * @param client_id {String}          The socket id of the client
      * @param peer_id {String}            The socket id of the peer
+     * @param channel_name {String}       The name of the #channel
      * @param connecting {Boolean}        Switches channel_id string to match for both peers
      */
-    registerPeer: function( client_id, peer_id, connecting ) {
+    registerPeer: function( client_id, peer_id, channel_name, connecting ) {
       var
         self                = this,
         client_model        = this.getClientModel(),
         channel_id          = connecting ? 'peer_chat_' + peer_id + '_' + client_id : 'peer_chat_' + client_id + '_' + peer_id,
         ps                  = {},
-        p2p                 = null;
+        p2p                 = null,
+        peers               = this.getPeerConnections(client_id);
 
-      // Configure a new PeerSock object
-      ps[peer_id] = PeerSock({
+      // Proceed when peer isn't already registered
+      if (!(peer_id in peers)) {
 
-        // Stun server configuration
-        /*
-        rtc_config: {
-          iceServers: [
-            {url: "stun:23.21.150.121"},
-            {url: "stun:stun.l.google.com:19302"}
-          ]
-        },
-        */
+        // Configure a new PeerSock object
+        ps[peer_id] = PeerSock({
+          socket: client_model.get('socket'),
+          debug: true
+        });
 
-        socket: client_model.get('socket'),
-        debug: true
-      });
+        // Update client model w/ new PeerSock object
+        client_model.set({
+          connections: _.extend(client_model.get('connections'), ps)
+        });
 
-      // Update client model w/ new PeerSock object
-      client_model.set({
-        connections: _.extend(client_model.get('connections'), ps)
-      });
+        // Reference PeerSock object
+        p2p = client_model.get('connections')[peer_id];
 
-      // Reference PeerSock object
-      p2p = client_model.get('connections')[peer_id];
+        // Initialize peer connection w/ data channel
+        p2p.newListeningChannel({
+          channel_id: channel_id,
+          onMessage: function(c) {
+            var msg = JSON.parse(c.data);
 
-      // Initialize peer connection w/ data channel
-      p2p.newListeningChannel({
-        channel_id: channel_id,
-        onMessage: function(c) {
-          var msg = JSON.parse(c.data);
+            // Parse incoming messages
+            self.messageCommandParser(msg.command, msg.data);
 
-          // Parse incoming messages
-          self.messageCommandParser(msg.command, msg.data);
-
-          // Send confirmation connection message once
-          if (!p2p.connection_established) {
-            p2p.connection_established = true;
-            c.channel.send(JSON.stringify({
-              command: 'connect',
-              data: {
-                peer_id: client_id,
-                username: client_model.get('username')
-              }
-            }));
+            // Send confirmation connection message once
+            if (!p2p.connection_established) {
+              p2p.connection_established = true;
+              c.channel.send(JSON.stringify({
+                command: 'connect',
+                data: {
+                  peer_id: client_id,
+                  username: client_model.get('username'),
+                  channel_name: channel_name
+                }
+              }));
+            }
           }
-        }
-      });
+        });
+      }
     },
 
     /**
@@ -149,8 +327,9 @@ define([
      *
      * @param client_id {String}        The socket id of the client
      * @param peer_id {String}          The socket id of the peer
+     * @param channel_name {String}       The name of the #channel
      */
-    connectToPeer: function( client_id, peer_id ) {
+    connectToPeer: function( client_id, peer_id, channel_name ) {
       var
         self                = this,
         client_model        = this.getClientModel(),
@@ -168,7 +347,8 @@ define([
             command: 'connect',
             data: {
               peer_id: client_id,
-              username: client_model.get('username')
+              username: client_model.get('username'),
+              channel_name: channel_name
             }
           }));
 
@@ -215,14 +395,20 @@ define([
     /**
      * Adds user list item element to the user list.
      *
-     * @param peer_id {String}        The socket id of the peer
-     * @param username {String}       The user name of the peer
+     * @param peer_id {String}            The socket id of the peer
+     * @param username {String}           The user name of the peer
+     * @param channel_name {String}       The channel name
      */
-    addUserToList: function( peer_id, username ) {
-      $('.user-list').append($(this.templates.userListItem({
-        peer_id: peer_id,
-        username: username
-      })).addClass(peer_id == this.client_id ? 'me' : ''));
+    addUserToList: function( peer_id, username, channel_name ) {
+      var
+        channel_elm       = $('.pc-channel[data-channel-id="' + channel_name + '"]'),
+        list_item         = channel_elm.find('.user-list-item[data-peer-id="' + peer_id + '"]');
+      if (!list_item.length) {
+        channel_elm.find('.user-list').append($(this.templates.userListItem({
+          peer_id: peer_id,
+          username: username
+        })).addClass(peer_id == this.client_id ? 'me' : ''));
+      }
     },
 
     /**
@@ -242,14 +428,30 @@ define([
     },
 
     /**
+     * Removes a peer from the user list of a specific channel.
+     *
+     * @param peer_id {String}            The socket id of the peer
+     * @param channel_name {String}       The channel name
+     */
+    removeFromChannelUserList: function( peer_id, channel_name ) {
+      var
+        channel_elm           = $('.pc-channel[data-channel-id="' + channel_name + '"]'),
+        user_list_item        = channel_elm.find('.user-list-item[data-peer-id="'+ peer_id +'"]');
+      user_list_item.remove();
+    },
+
+    /**
      * Appends a user message to the chat window.
      *
-     * @param username {String}       User name of peer
-     * @param message {String}        Message from peer
-     * @param id {String}             The socket id of message source
+     * @param username {String}           User name of peer
+     * @param message {String}            Message from peer
+     * @param id {String}                 The socket id of message source
+     * @param channel_name {String}       The channel name
      */
-    addMessageToWindow: function( username, message, id ) {
-      $('.pc-window').append($(this.templates.userMessageItem({
+    addMessageToWindow: function( username, message, id, channel_name ) {
+      var
+        channel_elm       = $('.pc-channel[data-channel-id="' + channel_name + '"]');
+      channel_elm.find('.pc-window').append($(this.templates.userMessageItem({
         username: username,
         message: message,
         peer_id: id
@@ -267,7 +469,7 @@ define([
 
         // Connection establishment
         case 'connect' :
-          this.addUserToList(data.peer_id, data.username);
+          this.addUserToList(data.peer_id, data.username, data.channel_name);
           break;
 
         // Channel keep-alive ping
@@ -277,7 +479,7 @@ define([
 
         // Broadcast message to peers
         case 'group-message' :
-          this.addMessageToWindow(data.username, data.message, data.id);
+          this.addMessageToWindow(data.username, data.message, data.id, data.channel_name);
           break;
 
         // A user has changed their name
@@ -314,11 +516,12 @@ define([
     /**
      * Sends a message to a given peer.
      *
-     * @param command {String}        Command string
-     * @param peer_id {String}        The socket id of the peer
-     * @param message {String}        Message to send
+     * @param command {String}            Command string
+     * @param peer_id {String}            The socket id of the peer
+     * @param channel_name {String}       The channel name
+     * @param message {String}            Message to send
      */
-    sendMessageToPeer: function( command, peer_id, message ) {
+    sendMessageToPeer: function( command, peer_id, channel_name, message ) {
       var
         client_model        = this.getClientModel(),
         p2p                 = client_model.get('connections')[peer_id];
@@ -332,6 +535,7 @@ define([
           data: {
             id: client_model.get('client_id'),
             username: client_model.get('username'),
+            channel_name: channel_name,
             message: message
           }
         }));
@@ -341,10 +545,11 @@ define([
     /**
      * Sends a message to all connected peers.
      *
-     * @param command {String}        Command string
-     * @param message {String}        The socket id of the peer
+     * @param command {String}            Command string
+     * @param channel_name {String}       The channel name
+     * @param message {String}            The socket id of the peer
      */
-    sendMessageToAllPeers: function( command, message ) {
+    sendMessageToAllPeers: function( command, channel_name, message ) {
       var
         self                = this,
         client_model        = this.collection.find(function(model) {
@@ -352,7 +557,7 @@ define([
         }),
         peers               = client_model.get('connections');
       _.each(peers, function(p2p, id) {
-        self.sendMessageToPeer(command, id, message);
+        self.sendMessageToPeer(command, id, channel_name, message);
       });
     },
 
@@ -363,13 +568,14 @@ define([
      */
     chatWindowTextInputHandler: function( e ) {
       var
-        target        = $(e.target),
-        message       = target.val(),
-        key_code      = e.keyCode;
+        target              = $(e.target),
+        channel_name        = target.closest('.pc-channel').attr('data-channel-id'),
+        message             = target.val(),
+        key_code            = e.keyCode;
       switch (true) {
         case key_code == 13 :
-          this.addMessageToWindow(this.getClientModel().get('username'), message, this.client_id);
-          this.sendMessageToAllPeers('group-message', message);
+          this.addMessageToWindow(this.getClientModel().get('username'), message, this.client_id, channel_name);
+          this.sendMessageToAllPeers('group-message', channel_name, message);
           target.val('');
           return false;
           break;
@@ -377,7 +583,7 @@ define([
     },
 
     /**
-     * Handles renaming users.
+     * Handles renaming user text input.
      *
      * @param e {Object}        The 'click' event object
      */
@@ -415,6 +621,7 @@ define([
         parent.html(username);
         client_model.set('username', username);
         target.remove();
+        // @todo - add all parameters to sendMessageToAllPeers - missing channel_name ... ?
         this.sendMessageToAllPeers('name-change', client_model.get('username'));
       }
     }
