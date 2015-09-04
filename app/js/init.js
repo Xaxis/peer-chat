@@ -4,12 +4,10 @@
 define([
   'devgrid',
   'modernizr-tests',
-  'ux',
   'router'
 ], function(
   Devgrid,
   ModernizrTests,
-  UX,
   Router
 ) {
   var Init = function() {
@@ -23,10 +21,9 @@ define([
         // Module initializations
         Devgrid.initialize();
         ModernizrTests.initialize();
-        UX.initialize();
 
         // Router initializations
-        Router.initialize({pushState: true});
+        Router.initialize();
       }
     };
   };

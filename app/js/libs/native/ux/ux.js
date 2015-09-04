@@ -14,9 +14,16 @@ define([
   var UX = function() {
     return {
       initialize: function() {
+      },
 
-        // Equalize chat interface column heights
-        $('.pc-col-2').eqheight('.pc-col-1');
+      /**
+       * Makes col1 the same height as col2.
+       *
+       * @param col1 {String|Object}
+       * @param col2 {String|Object}
+       */
+      equalizeColumnsHeights: function( col1, col2 ) {
+        $(col1).eqheight(col2);
       }
     };
   };

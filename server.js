@@ -22,18 +22,30 @@ io.sockets.on('connection', function(socket) {
    * Listen on request to register a client.
    */
   socket.on('register', function( msg ) {
+    console.log('User ' + socket.id + ' ATTEMPTING registration');
     var
       channel       = msg.channel || socket.id;
 
+    // Send init registration back to peer when no channel is specified
+    if (!msg.channel) {
+      console.log('User ' + socket.id + ' ATTEMPTING registration w/o channel');
+      socket.emit('ready_init', {
+        channel_name: socket.id
+      });
+      return false;
+    }
+
     // Create channel if it doesn't exist
     if (!channels[channel]) {
+      console.log('Channel "' + channel + '" CREATED');
       channels[channel] = {
         hosts: {}
       };
     }
 
     // Register peer as ready in main hosts object
-    if (msg.ready && !(socket.id in hosts)) {
+    if (msg.ready && !(hosts.hasOwnProperty(socket.id))) {
+      console.log('User ' + socket.id + ' REGISTERED');
 
       // Build host object
       hosts[socket.id] = {
@@ -44,8 +56,8 @@ io.sockets.on('connection', function(socket) {
     }
 
     // Register peer as ready in given channel
-    if (msg.ready && !(socket.id in channels[channel]).hosts) {
-      console.log('User "' + socket.id + '" JOINING channel "' + channel + '"');
+    if (msg.ready && !(channels[channel]).hosts.hasOwnProperty(socket.id)) {
+      console.log('User ' + socket.id + ' JOINING channel "' + channel + '"');
 
       // Add channel to main hosts object
       hosts[socket.id].channels.push(channel);
@@ -73,58 +85,71 @@ io.sockets.on('connection', function(socket) {
   });
 
   /**
-   * Listen on request to deregister client.
+   * Listen on peer disconnect.
    */
   socket.on('disconnect', function() {
 
-    // Iterate through channels registered to peer
-    _.each(hosts[socket.id].channels, function( channel ) {
-      console.log('User "' + socket.id + '" LEAVING channel "' + channel + '"');
+    // Verify host still exists
+    if (hosts.hasOwnProperty(socket.id)) {
 
-      // Disconnect message to all peers on channel
-      // @todo - this should only emit to all peers who are in a given channel
-      socket.broadcast.emit('peer_disconnect_' + channel, socket.id);
+      // Iterate through channels registered to peer
+      _.each(hosts[socket.id].channels, function( channel ) {
+        console.log('User ' + socket.id + ' LEAVING channel "' + channel + '"');
 
-      // Delete host object from channel
-      delete channels[channel].hosts[socket.id];
-    });
+        // Confirm channel still exists
+        if (channels.hasOwnProperty(channel)) {
+
+          // Iterate through all peers that are also in this channel
+          _.each(channels[channel].hosts, function(host) {
+
+            // Send message to peer in this channel
+            host.socket.emit('peer_disconnect_' + channel, socket.id);
+          });
+        }
+
+        // Delete disconnecting peer's host object from channel
+        delete channels[channel].hosts[socket.id];
+
+        // Remove channel if no further peers are residing
+        if (_.size(channels[channel].hosts) <= 0) {
+          delete channels[channel];
+          console.log('Channel "' + channel + '" REMOVED');
+        }
+      });
+    }
 
     // Remove main hosts object
     delete hosts[socket.id];
+    console.log('User ' + socket.id + ' DISCONNECTED');
   });
 
 
   /**
-   * Listen on request to deregister from a channel
+   * Listen on request to deregister from a channel.
    */
   socket.on('channel_close', function( msg ) {
     var
-      channel       = msg.channel,
-      peer_id       = msg.peer_id;
-    if (channel in channels) {
+      channel       = msg.channel;
+    if (channels.hasOwnProperty(channel)) {
 
       // Iterate through hosts in a given channel
       _.each(channels[channel].hosts, function(host) {
         host.socket.emit('channel_close_' + channel, {
           channel: channel,
-          peer_id: peer_id
+          peer_id: socket.id
         });
       });
 
       // Remove user from channel
-      if (peer_id in channels[channel].hosts) {
-        delete channels[channel].hosts[peer_id];
+      if (channels[channel].hosts.hasOwnProperty(socket.id)) {
+        delete channels[channel].hosts[socket.id];
+        console.log('User ' + socket.id + 'LEFT channel "' + channel + '"');
       }
     }
   });
 
   /**
    * Listen on request to send data message to target peer.
-   *
-   * @param messageObject {Object}
-   * @param messageObject.peer_id     Socket ID of target peer to send message to
-   * @param messageObject.client_id   Socket ID of peer sending the message
-   * @param messageObject.handler_id  Name of listening 'onmessage' callback
    */
   socket.on('MessageToPeer', function( msg ) {
     var
@@ -132,7 +157,7 @@ io.sockets.on('connection', function(socket) {
       handler       = msg.handler_id;
 
     // Send message to peer
-    if (msg.peer_id in hosts) {
+    if (hosts.hasOwnProperty(msg.peer_id)) {
       target_peer = hosts[msg.peer_id].socket;
       target_peer.emit(handler, _.extend(msg, {
         client_id: msg.peer_id,

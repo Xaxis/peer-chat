@@ -6,7 +6,7 @@ define([
   'underscore',
   'backbone',
   'peersock',
-  'jquery.eqheight',
+  'ux',
   '../collections/UsersCollection',
   'text!../templates/UserChannel.tpl.html',
   'text!../templates/UserChannelLabel.tpl.html',
@@ -17,7 +17,7 @@ define([
   _,
   Backbone,
   PeerSock,
-  $eqheight,
+  UX,
   UsersCollection,
   tplUserChannel,
   tplUserChannelLabel,
@@ -51,7 +51,7 @@ define([
     router: null,
 
     /**
-     * Initializes the view.
+     * View initialization method.
      *
      * @param router {Object}       Reference to backbone router
      */
@@ -99,19 +99,17 @@ define([
      */
     addUserChannelElm: function( channel ) {
       var
-        channel_elm       = $('[data-channel-id="' + channel+ '"]');
+        channel_elm       = $('[data-channel-id="' + channel + '"]');
       $('.pc-channel').removeClass('active');
       if (!channel_elm.length) {
-        $('.pc-channels-container').append($(this.templates.userChannel({
+        channel_elm = $(this.templates.userChannel({
           channelid: channel
-        })).addClass('active'));
-
-        // Resize channel columns
-        // @todo - determine how to make this into a custom event in ux.js, that is then triggered from here
-        $('.pc-col-2').eqheight('.pc-col-1');
+        })).addClass('active');
+        $('.pc-channels-container').append(channel_elm);
       } else {
         channel_elm.addClass('active');
       }
+      UX.equalizeColumnsHeights(channel_elm.find('.pc-col-2'), channel_elm.find('.pc-col-1'));
     },
 
     /**
@@ -121,7 +119,7 @@ define([
      */
     addUserChannelLabel: function( channel ) {
       var
-        channel_elm       = $('[data-channel-label-id="' + channel+ '"]');
+        channel_elm       = $('[data-channel-label-id="' + channel + '"]');
       $('.pc-channel-label').removeClass('active');
       if (!channel_elm.length) {
         $('.pc-channel-label--add-channel').after($(this.templates.userChannelLabel({
@@ -139,8 +137,13 @@ define([
      */
     userChannelLabelSwitch: function( e ) {
       var
-        target        = $(e.currentTarget),
-        channel       = target.find('.channelid').html();
+        target            = $(e.currentTarget),
+        channel           = target.find('.channelid').html(),
+        channel_elm       = $('[data-channel-id="' + channel + '"]');
+      $('.pc-channel').removeClass('active');
+      $('.pc-channel-label').removeClass('active');
+      channel_elm.addClass('active');
+      target.addClass('active');
       this.router.navigate(channel, {trigger: true, replace: true});
     },
 
@@ -154,8 +157,10 @@ define([
       var
         target              = $(e.currentTarget),
         channel             = target.prev('.text').html(),
-        prev_channel        = target.closest('.pc-channel-label').next(),
-        prev_id             = prev_channel.attr('data-channel-label-id');
+        parent              = target.closest('.pc-channel-label'),
+        prev_channel        = parent.prev('.pc-channel-label'),
+        next_channel        = parent.next('.pc-channel-label'),
+        channel_to_load     = '';
 
       // Remove channel elements
       this.removeUserChannelElms(channel);
@@ -163,11 +168,19 @@ define([
       // Close the channel
       this.router.navigate(channel + '/close/' + this.client_id, {trigger: true, replace: true});
 
-      // Redirect to appropriate location
+      // Redirect to appropriate location/show corresponding elements
       if (prev_channel.length) {
-        this.router.navigate(prev_id, {trigger: true, replace: true});
-      } else {
-        this.router.navigate('#', {trigger: true, replace: true});
+        channel_to_load = prev_channel.attr('data-channel-label-id');
+        prev_channel.trigger('click');
+        this.router.navigate(channel_to_load, {trigger: true, replace: true});
+      }
+      else if (next_channel.length) {
+        channel_to_load = next_channel.attr('data-channel-label-id');
+        next_channel.trigger('click');
+        this.router.navigate(channel_to_load, {trigger: true, replace: true});
+      }
+      else {
+        this.router.navigate(this.client_id, {trigger: true, replace: true});
       }
     },
 
