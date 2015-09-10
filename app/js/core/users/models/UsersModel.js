@@ -11,7 +11,9 @@ define([
         client_id: 0,
         username_set: false,
         username: 'anonymous',
-        connections: {}
+        connections: {},
+        connection_time: '',
+        channels: {}
       };
     }
   });

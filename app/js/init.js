@@ -17,12 +17,8 @@ define([
        * Initialize modules
        */
       initialize: function() {
-
-        // Module initializations
         Devgrid.initialize();
         ModernizrTests.initialize();
-
-        // Router initializations
         Router.initialize();
       }
     };

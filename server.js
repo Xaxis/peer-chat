@@ -6,7 +6,18 @@ var
   app                 = express(),
   hosts               = {},
   channels            = {},
-  server              = null;
+  usernames           = {},
+  server              = null,
+  uniqueUsername      = function() {
+    var
+      name        = 'anony' + _.random(100000, 999999);
+    if (usernames.hasOwnProperty(name)) {
+      return uniqueUsername();
+    } else {
+      usernames[name] = true;
+      return name;
+    }
+  };
 
 // Trust X-Forwarded-* header fields
 app.enable('trust proxy');
@@ -24,13 +35,13 @@ io.sockets.on('connection', function(socket) {
   socket.on('register', function( msg ) {
     console.log('User ' + socket.id + ' ATTEMPTING registration');
     var
-      channel       = msg.channel || socket.id;
+      channel         = msg.channel || socket.id;
 
     // Send init registration back to peer when no channel is specified
     if (!msg.channel) {
       console.log('User ' + socket.id + ' ATTEMPTING registration w/o channel');
       socket.emit('ready_init', {
-        channel_name: socket.id
+        channel_name: channel
       });
       return false;
     }
@@ -45,13 +56,18 @@ io.sockets.on('connection', function(socket) {
 
     // Register peer as ready in main hosts object
     if (msg.ready && !(hosts.hasOwnProperty(socket.id))) {
-      console.log('User ' + socket.id + ' REGISTERED');
+      console.log('User ' + socket.id + ' REGISTERED @ ' + socket.client.conn.remoteAddress);
 
       // Build host object
       hosts[socket.id] = {
         socket: socket,
         client_id: socket.id,
-        channels: []
+        channels: [],
+        username: uniqueUsername(),
+        whois: {
+          ip: socket.client.conn.remoteAddress,
+          time: Date.now()
+        }
       }
     }
 
@@ -70,7 +86,9 @@ io.sockets.on('connection', function(socket) {
         init: {
           channel_name: channel,
           client_id: socket.id,
-          peers: []
+          peers: [],
+          username: hosts[socket.id].username,
+          whois: hosts[socket.id].whois
         }
       };
 
@@ -103,7 +121,10 @@ io.sockets.on('connection', function(socket) {
           _.each(channels[channel].hosts, function(host) {
 
             // Send message to peer in this channel
-            host.socket.emit('peer_disconnect_' + channel, socket.id);
+            host.socket.emit('peer_disconnect_' + channel, {
+              peer_id: socket.id,
+              channels: hosts[socket.id].channels
+            });
           });
         }
 
@@ -118,9 +139,14 @@ io.sockets.on('connection', function(socket) {
       });
     }
 
+    // Remove username
+    if (usernames.hasOwnProperty(hosts[socket.id].username)) {
+      delete usernames[hosts[socket.id].username];
+    }
+
     // Remove main hosts object
-    delete hosts[socket.id];
     console.log('User ' + socket.id + ' DISCONNECTED');
+    delete hosts[socket.id];
   });
 
 

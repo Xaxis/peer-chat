@@ -5199,7 +5199,7 @@ th {
 
 html {
   box-sizing: border-box;
-  font-size: 16px; }
+  font-size: 14px; }
 
 *, *:before, *:after {
   box-sizing: inherit; }
@@ -5294,8 +5294,32 @@ body {
       width: calc(75% - (20px / 2)); }
     html:not(.csscalc) .peer-chat .pc-col-1 {
       width: 74.2%; }
-    .peer-chat .pc-col-1 .pc-window .user-message-item.me .user-name {
+    .peer-chat .pc-col-1 .pc-window .user-message-item.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-action.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-private.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-name-change.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-left-channel.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-joined-channel.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-ping-request.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-ping-answer.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-ignore-add.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-ignore-remove.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-help.me .user-name {
       font-weight: 800; }
+    .peer-chat .pc-col-1 .pc-window .user-message-action,
+    .peer-chat .pc-col-1 .pc-window .user-message-private,
+    .peer-chat .pc-col-1 .pc-window .user-message-name-change,
+    .peer-chat .pc-col-1 .pc-window .user-message-left-channel,
+    .peer-chat .pc-col-1 .pc-window .user-message-joined-channel,
+    .peer-chat .pc-col-1 .pc-window .user-message-ping-request,
+    .peer-chat .pc-col-1 .pc-window .user-message-ping-answer,
+    .peer-chat .pc-col-1 .pc-window .user-message-ignore-add,
+    .peer-chat .pc-col-1 .pc-window .user-message-ignore-remove {
+      color: #4e7ea0;
+      font-weight: bold; }
+    .peer-chat .pc-col-1 .pc-window .user-message-help .command {
+      color: #4e7ea0;
+      font-family: courier, monospace; }
   .peer-chat .pc-col-2, .peer-chat .user-list {
     position: relative;
     float: left;

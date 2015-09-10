@@ -11,7 +11,17 @@ define([
   'text!../templates/UserChannel.tpl.html',
   'text!../templates/UserChannelLabel.tpl.html',
   'text!../templates/UserListItem.tpl.html',
-  'text!../templates/UserMessageItem.tpl.html'
+  'text!../templates/UserMessageItem.tpl.html',
+  'text!../templates/UserMessageAction.tpl.html',
+  'text!../templates/UserMessagePrivate.tpl.html',
+  'text!../templates/UserMessageNameChange.tpl.html',
+  'text!../templates/UserMessageLeftChannel.tpl.html',
+  'text!../templates/UserMessageJoinedChannel.tpl.html',
+  'text!../templates/UserMessagePingRequest.tpl.html',
+  'text!../templates/UserMessagePingAnswer.tpl.html',
+  'text!../templates/UserMessageIgnoreAdd.tpl.html',
+  'text!../templates/UserMessageIgnoreRemove.tpl.html',
+  'text!../templates/UserMessageHelp.tpl.html'
 ], function(
   $,
   _,
@@ -22,7 +32,17 @@ define([
   tplUserChannel,
   tplUserChannelLabel,
   tplUserListItem,
-  tplUserMessageItem
+  tplUserMessageItem,
+  tplUserMessageAction,
+  tplUserMessagePrivate,
+  tplUserMessageNameChange,
+  tplUserMessageLeftChannel,
+  tplUserMessageJoinedChannel,
+  tplUserMessagePingRequest,
+  tplUserMessagePingAnswer,
+  tplUserMessageIgnoreAdd,
+  tplUserMessageIgnoreRemove,
+  tplUserMessageHelp
 ) {
   var UsersView = Backbone.View.extend({
     el: $('body'),
@@ -31,7 +51,17 @@ define([
       userChannel: _.template(tplUserChannel),
       userChannelLabel: _.template(tplUserChannelLabel),
       userListItem: _.template(tplUserListItem),
-      userMessageItem: _.template(tplUserMessageItem)
+      userMessageItem: _.template(tplUserMessageItem),
+      userMessageAction: _.template(tplUserMessageAction),
+      userMessagePrivate: _.template(tplUserMessagePrivate),
+      userMessageNameChange: _.template(tplUserMessageNameChange),
+      userMessageLeftChannel: _.template(tplUserMessageLeftChannel),
+      userMessageJoinedChannel: _.template(tplUserMessageJoinedChannel),
+      userMessagePingRequest: _.template(tplUserMessagePingRequest),
+      userMessagePingAnswer: _.template(tplUserMessagePingAnswer),
+      userMessageIgnoreAdd: _.template(tplUserMessageIgnoreAdd),
+      userMessageIgnoreRemove: _.template(tplUserMessageIgnoreRemove),
+      userMessageHelp: _.template(tplUserMessageHelp)
     },
 
     events: {
@@ -60,7 +90,9 @@ define([
       // Bind methods
       _.bindAll(this,
         'addUserChannelElm',
+        'getUserChannelContainerElm',
         'addUserChannelLabel',
+        'getUserChannelLabelContainerElm',
         'userChannelLabelClose',
         'userChannelLabelSwitch',
         'addUserChannelBlur',
@@ -77,12 +109,15 @@ define([
         'removeFromUserList',
         'removeFromChannelUserList',
         'addMessageToWindow',
-        'messageCommandParser',
         'sendMessageToPeer',
         'sendMessageToAllPeers',
-        'chatWindowTextInputHandler',
         'userListItemNameChange',
-        'userListItemNameChangeConfirm'
+        'userListItemNameChangeConfirm',
+        'updateUsername',
+        'chatWindowTextInputHandler',
+        'isPeerIgnored',
+        'messageCommandParser',
+        'chatWindowTextInputCommand'
       );
 
       // Reference the app router
@@ -113,6 +148,23 @@ define([
     },
 
     /**
+     * Returns the channel container element at a given id. When channel is passed as an element, attempts to find
+     * the channel container assuming the passed element is a descendant.
+     *
+     * @param channel {String}        The channel id
+     */
+    // @todo - implement this method where applicable
+    getUserChannelContainerElm: function( channel ) {
+      if (typeof channel == 'string') {
+        return $('.pc-channel[data-channel-id="' + channel + '"]');
+      } else if (channel.length) {
+        return channel.closest('[data-channel-id]');
+      } else {
+        return false;
+      }
+    },
+
+    /**
      * Adds user channel label elements to the DOM.
      *
      * @param channel {String}        The channel id
@@ -127,6 +179,23 @@ define([
         })).addClass('active'));
       } else {
         channel_elm.addClass('active');
+      }
+    },
+
+    /**
+     * Returns the channel label container element at a given id. When channel is passed as an element, attempts to find
+     * the channel container assuming the passed element is a descendant.
+     *
+     * @param channel {String}      The channel id
+     */
+    // @todo - implement this method where applicable
+    getUserChannelLabelContainerElm: function( channel ) {
+      if (typeof channel == 'string') {
+        return $('.pc-channel-label[data-channel-label-id="' + channel + '"]');
+      } else if (channel.length) {
+        return channel.closest('[data-channel-label-id]');
+      } else {
+        return false;
       }
     },
 
@@ -160,10 +229,19 @@ define([
         parent              = target.closest('.pc-channel-label'),
         prev_channel        = parent.prev('.pc-channel-label'),
         next_channel        = parent.next('.pc-channel-label'),
-        channel_to_load     = '';
+        channel_to_load     = '',
+        channels_list       = this.getClientModel().get('channels');
+
+      // Notify peers
+      this.sendMessageToAllPeers('group-leave-channel', channel, '');
 
       // Remove channel elements
       this.removeUserChannelElms(channel);
+
+      // Remove channel from channels list
+      if (channels_list.hasOwnProperty(channel)) {
+        delete channels_list[channel];
+      }
 
       // Close the channel
       this.router.navigate(channel + '/close/' + this.client_id, {trigger: true, replace: true});
@@ -246,8 +324,7 @@ define([
     removeUserChannelElms: function( channel ) {
       var
         chat_window         = $('[data-channel-id="' + channel + '"]'),
-        channel_label       = $('[data-channel-label-id="' +
-        channel + '"]');
+        channel_label       = $('[data-channel-label-id="' + channel + '"]');
       chat_window.remove();
       channel_label.remove();
     },
@@ -255,10 +332,12 @@ define([
     /**
      * Creates client model and references client/socket id "globally".
      *
-     * @param socket {Object}           Socket.io object
-     * @param client_id {String}        Socket id from server
+     * @param socket {Object}             Socket.io object
+     * @param client_id {String}          Socket id from server
+     * @param username {String}           The username generated by server
+     * @param channel_name {String}       The #channel id
      */
-    registerClient: function( socket, client_id ) {
+    registerClient: function( socket, client_id, username, channel_name ) {
 
       // Proceed if not already registered
       if (!this.client_id) {
@@ -266,12 +345,34 @@ define([
         // Register client in collection
         this.collection.add({
           socket: socket,
-          client_id: client_id
+          client_id: client_id,
+          connection_time: Date.now(),
+          username: username
         });
 
         // Reference client id "globally"
         this.client_id = client_id;
+
+        // Add "self" to channel user list
+        this.addUserToList(client_id, username, channel_name);
+      } else {
+        this.addUserToList(client_id, this.getClientModel().get('username'), channel_name);
       }
+
+      // Add channel to channels list
+      var channels = this.getClientModel().get('channels');
+      if (!channels.hasOwnProperty(channel_name)) {
+        channels[channel_name] = true;
+      }
+
+      // Add status message to local chat window
+      this.addMessageToWindow({
+        username: this.getClientModel().get('username'),
+        message: channel_name,
+        id: client_id,
+        channel_name: channel_name,
+        template: 'userMessageJoinedChannel'
+      });
     },
 
     /**
@@ -291,14 +392,18 @@ define([
         p2p                 = null,
         peers               = this.getPeerConnections(client_id);
 
-      // Proceed when peer isn't already registered
+      // Register peer when not already registered
       if (!(peer_id in peers)) {
 
         // Configure a new PeerSock object
         ps[peer_id] = PeerSock({
           socket: client_model.get('socket'),
-          debug: true
+          debug: false
         });
+
+        // Set initial peer options
+        ps[peer_id].username = 'anonymous';   // @todo - determine if this needs to be set here
+        ps[peer_id].ignore = false;
 
         // Update client model w/ new PeerSock object
         client_model.set({
@@ -323,14 +428,24 @@ define([
               c.channel.send(JSON.stringify({
                 command: 'connect',
                 data: {
-                  peer_id: client_id,
+                  id: client_id,
                   username: client_model.get('username'),
                   channel_name: channel_name
                 }
               }));
+
+              // Notify peer - channel connection message
+              self.sendMessageToPeer('channel-connect', peer_id, channel_name, '');
             }
           }
         });
+
+      // Update already connected peer in new channel
+      } else {
+        var
+          ps_obj        = this.getPeerConnections(this.client_id)[peer_id];
+        this.addUserToList(peer_id, ps_obj.username, channel_name);
+        self.sendMessageToAllPeers('channel-connect', channel_name, '');
       }
     },
 
@@ -338,8 +453,8 @@ define([
      * Initializes p2p connection with peer, builds data channel, establishes default data channel event listeners, and
      * starts channel keep alive pings for each channel.
      *
-     * @param client_id {String}        The socket id of the client
-     * @param peer_id {String}          The socket id of the peer
+     * @param client_id {String}          The socket id of the client
+     * @param peer_id {String}            The socket id of the peer
      * @param channel_name {String}       The name of the #channel
      */
     connectToPeer: function( client_id, peer_id, channel_name ) {
@@ -359,7 +474,7 @@ define([
           c.channel.send(JSON.stringify({
             command: 'connect',
             data: {
-              peer_id: client_id,
+              id: client_id,
               username: client_model.get('username'),
               channel_name: channel_name
             }
@@ -429,15 +544,40 @@ define([
      * removes PeerSock object from client model.
      *
      * @param peer_id {String}        The socket id of the peer
+     * @param channels {Array}        List of channels
      */
-    removeFromUserList: function( peer_id ) {
-      var peers = this.getPeerConnections(this.client_id);
-      _.each(peers[peer_id].channels, function(channel) {
-        channel.channel.close();
-      });
-      clearInterval(peers[peer_id].keep_alive);
-      delete peers[peer_id];
-      $('.user-list [data-peer-id="'+ peer_id +'"]').remove();
+    removeFromUserList: function( peer_id, channels ) {
+      var
+        self          = this,
+        peers         = this.getPeerConnections(this.client_id);
+
+      if (peers.hasOwnProperty(peer_id)) {
+        _.each(peers[peer_id].channels, function(channel) {
+          channel.channel.close();
+        });
+
+        // Add message to local channel chat windows
+        _.each(this.getClientModel().get('channels'), function(co, cname) {
+          if (_.indexOf(channels, cname) != -1) {
+            self.addMessageToWindow({
+              username: peers[peer_id].username,
+              message: '',
+              id: peer_id,
+              channel_name: cname,
+              template: 'userMessageLeftChannel'
+            });
+          }
+        });
+
+        // Clear keep-alive inetrval
+        clearInterval(peers[peer_id].keep_alive);
+
+        // Remove peer object
+        delete peers[peer_id];
+
+        // Remove user list element
+        $('.user-list [data-peer-id="'+ peer_id +'"]').remove();
+      }
     },
 
     /**
@@ -454,53 +594,24 @@ define([
     },
 
     /**
-     * Appends a user message to the chat window.
+     * Appends a message to a #channel's chat window.
      *
-     * @param username {String}           User name of peer
-     * @param message {String}            Message from peer
-     * @param id {String}                 The socket id of message source
-     * @param channel_name {String}       The channel name
+     * @param opts {Object}
+     * @param opts.username {String}            User name of peer
+     * @param opts.message {String}             Message to add
+     * @param opts.id {String}                  The socket id of message source
+     * @param opts.channel_name {String}        The name of the #channel
+     * @param opts.template {String}            The name of the template object to use
      */
-    addMessageToWindow: function( username, message, id, channel_name ) {
+    addMessageToWindow: function( opts ) {
       var
-        channel_elm       = $('.pc-channel[data-channel-id="' + channel_name + '"]');
-      channel_elm.find('.pc-window').append($(this.templates.userMessageItem({
-        username: username,
-        message: message,
-        peer_id: id
-      })).addClass(id == this.client_id ? 'me' : ''));
-    },
-
-    /**
-     * Executes various functionality based on commands received from peers.
-     *
-     * @param command {String}        Command to execute
-     * @param data {Object}           Data sent from peer
-     */
-    messageCommandParser: function( command, data ) {
-      switch (command) {
-
-        // Connection establishment
-        case 'connect' :
-          this.addUserToList(data.peer_id, data.username, data.channel_name);
-          break;
-
-        // Channel keep-alive ping
-        case 'ping' :
-          return false;
-          break;
-
-        // Broadcast message to peers
-        case 'group-message' :
-          this.addMessageToWindow(data.username, data.message, data.id, data.channel_name);
-          break;
-
-        // A user has changed their name
-        case 'name-change' :
-          $('.user-list-item[data-peer-id="' + data.id + '"]').html(data.username);
-          $('.user-message-item[data-peer-id="' + data.id + '"]').find('.user-name').html(data.username);
-          break;
-      }
+        channel_elm       = $('.pc-channel[data-channel-id="' + opts.channel_name + '"]');
+      channel_elm.find('.pc-window').append($(this.templates[opts.template]({
+        username: opts.username,
+        message: opts.message,
+        peer_id: opts.id
+      })).addClass(opts.id == this.client_id ? 'me' : ''));
+      UX.scrollToBottom(channel_elm.find('.pc-window'));
     },
 
     /**
@@ -513,12 +624,14 @@ define([
      */
     channelKeepAlive: function( channel_id, peer_id, speed ) {
       var
+        self                = this,
         client_model        = this.getClientModel(),
         p2p                 = client_model.get('connections')[peer_id];
         p2p.keep_alive      = setInterval(function() {
           p2p.sendOnChannel(channel_id, JSON.stringify({
             command: 'ping',
               data: {
+                id: self.client_id,
                 message: null
               }
             }));
@@ -541,8 +654,6 @@ define([
 
       // Iterate through all data channels
       _.each(p2p.channels, function(channel, id) {
-
-        // Send message
         p2p.sendOnChannel(id, JSON.stringify({
           command: command,
           data: {
@@ -575,27 +686,6 @@ define([
     },
 
     /**
-     * Handles text input to send to peers.
-     *
-     * @param e {Object}      The 'keypress' event object
-     */
-    chatWindowTextInputHandler: function( e ) {
-      var
-        target              = $(e.target),
-        channel_name        = target.closest('.pc-channel').attr('data-channel-id'),
-        message             = target.val(),
-        key_code            = e.keyCode;
-      switch (true) {
-        case key_code == 13 :
-          this.addMessageToWindow(this.getClientModel().get('username'), message, this.client_id, channel_name);
-          this.sendMessageToAllPeers('group-message', channel_name, message);
-          target.val('');
-          return false;
-          break;
-      }
-    },
-
-    /**
      * Handles renaming user text input.
      *
      * @param e {Object}        The 'click' event object
@@ -625,17 +715,465 @@ define([
      */
     userListItemNameChangeConfirm: function( e ) {
       var
-        target        = $(e.target),
-        parent        = target.parent(),
-        client_model  = this.getClientModel(),
-        username      = target.val();
+        target            = $(e.target),
+        parent            = target.parent(),
+        client_model      = this.getClientModel(),
+        username          = target.val(),
+        old_username      = client_model.get('username');
       if (e.keyCode == 13 && username.length > 0 && username.length < 128) {
+
+        // Update username change elms
         parent.data('name-change-active', false);
-        parent.html(username);
-        client_model.set('username', username);
         target.remove();
-        // @todo - add all parameters to sendMessageToAllPeers - missing channel_name ... ?
-        this.sendMessageToAllPeers('name-change', client_model.get('username'));
+
+        // Update the user name
+        this.updateUsername(old_username, username);
+      }
+    },
+
+    /**
+     * Handles updating actions when a user changes their name.
+     *
+     * @param old_username {String}       The previous name
+     * @param new_username {String}       The name to change to
+     */
+    updateUsername: function( old_username, new_username ) {
+      var
+        self              = this,
+        client_model      = this.getClientModel(),
+        channel_list      = client_model.get('channels');
+
+      // Update client model prop
+      client_model.set('username', new_username);
+
+      // Add message to users open channel windows
+      _.each(channel_list, function(co, cname) {
+        self.addMessageToWindow({
+          username: old_username,
+          message: new_username,
+          id: self.client_id,
+          channel_name: cname,
+          template: 'userMessageNameChange'
+        });
+
+        // Update user list element w/ new username
+        var list_elm = self.getUserChannelContainerElm(cname).find('.user-list-item.me');
+        list_elm.html(new_username);
+
+        // Notify peers in channel
+        self.sendMessageToAllPeers('name-change', cname, old_username);
+      });
+    },
+
+    /**
+     * Handles text input to send to peers.
+     *
+     * @param e {Object}      The 'keypress' event object
+     */
+    chatWindowTextInputHandler: function( e ) {
+      var
+        target              = $(e.target),
+        channel_elm         = target.closest('.pc-channel'),
+        channel_name        = channel_elm.attr('data-channel-id'),
+        message             = target.val(),
+        key_code            = e.keyCode;
+      switch (key_code) {
+        case 13 :
+          if (!this.chatWindowTextInputCommand(message, channel_name)) {
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: message,
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessageItem'
+            });
+            this.sendMessageToAllPeers('group-message', channel_name, message);
+          }
+          target.val('');
+          return false;
+          break;
+      }
+    },
+
+    /**
+     * Determines whether or not a peer is being ignored.
+     *
+     * @param peer_id {String}        The socket id of the peer
+     */
+    isPeerIgnored: function( peer_id ) {
+      var
+        peer_objs       = this.getPeerConnections(this.client_id);
+      if (peer_objs.hasOwnProperty(peer_id)) {
+       if (peer_objs[peer_id].ignore) {
+         return true;
+       }
+      }
+      return false;
+    },
+
+    /**
+     * Executes various functionality based on commands received from peers.
+     *
+     * @param command {String}        Command to execute
+     * @param data {Object}           Data sent from peer
+     */
+    messageCommandParser: function( command, data ) {
+      switch (true) {
+
+        // Connection establishment
+        case command == 'connect' :
+          var
+            peer_obj       = this.getPeerConnections(this.client_id)[data.id];
+          peer_obj.username = data.username;
+          this.addUserToList(data.id, data.username, data.channel_name);
+          break;
+
+        // Channel establishment message
+        case command == 'channel-connect' :
+          this.addMessageToWindow({
+            username: data.username,
+            message: data.channel_name,
+            id: data.id,
+            channel_name: data.channel_name,
+            template: 'userMessageJoinedChannel'
+          });
+          break;
+
+        // Channel keep-alive ping
+        case command == 'ping' :
+          return false;
+          break;
+
+        // Broadcast message to peers
+        case command == 'group-message' && !this.isPeerIgnored(data.id) :
+          this.addMessageToWindow({
+            username: data.username,
+            message: data.message,
+            id: data.id,
+            channel_name: data.channel_name,
+            template: 'userMessageItem'
+          });
+          break;
+
+        // Broadcast message to peers - receiving a /me command message
+        case command == 'group-message-me' && !this.isPeerIgnored(data.id) :
+          this.addMessageToWindow({
+            username: data.username,
+            message: data.message.replace('/me ', ''),
+            id: data.id,
+            channel_name: data.channel_name,
+            template: 'userMessageAction'
+          });
+          break;
+
+        // Receive a private message from a peer
+        case command == 'group-message-msg' && !this.isPeerIgnored(data.id) :
+          this.addMessageToWindow({
+            username: data.username,
+            message: data.message.replace('/msg ', ''),
+            id: data.id,
+            channel_name: data.channel_name,
+            template: 'userMessagePrivate'
+          });
+          break;
+
+        // A user has changed their name
+        case command == 'name-change' :
+
+          // Update username
+          var peer_obj = this.getPeerConnections(this.client_id)[data.id];
+          peer_obj.username = data.username;
+
+          // Update elements
+          // @todo - change this so it just updates the elements in a given channel
+          $('.user-list-item[data-peer-id="' + data.id + '"]').html(data.username);
+          $('.user-message-item[data-peer-id="' + data.id + '"]').find('.user-name').html(data.username);
+
+          // Add message to chat window
+          this.addMessageToWindow({
+            username: data.message,
+            message: data.username,
+            id: this.client_id,
+            channel_name: data.channel_name,
+            template: 'userMessageNameChange'
+          });
+          break;
+
+        // A user has left a channel
+        case command == 'group-leave-channel' :
+          this.addMessageToWindow({
+            username: data.username,
+            message: '',
+            id: data.id,
+            channel_name: data.channel_name,
+            template: 'userMessageLeftChannel'
+          });
+          break;
+
+        // Handle a ping request/answer
+        case command == 'peer-message-ping' :
+          if (data.message == 'request') {
+            this.sendMessageToPeer('peer-message-ping', data.id, data.channel_name, 'answer|' + Date.now());
+          } else {
+            var
+              c_time        = Date.now(),
+              p_time        = parseInt(data.message.replace('answer|', '')),
+              a_time        = (c_time - p_time) / 1000;
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: a_time,
+              id: this.client_id,
+              channel_name: data.channel_name,
+              template: 'userMessagePingAnswer'
+            });
+          }
+          break;
+
+        // User added to ignore list
+        case command == 'peer-message-ignore' :
+          if (data.message.match(/^remove\|/)) {
+            this.addMessageToWindow({
+              username: data.username,
+              message: data.message.replace('remove|', ''),
+              id: this.client_id,
+              channel_name: data.channel_name,
+              template: 'userMessageIgnoreRemove'
+            });
+          }
+          else {
+            this.addMessageToWindow({
+              username: data.username,
+              message: data.message.replace('add|', ''),
+              id: this.client_id,
+              channel_name: data.channel_name,
+              template: 'userMessageIgnoreAdd'
+            });
+          }
+          break;
+      }
+    },
+
+    /**
+     * Handles the execution of IRC style commands.
+     *
+     * @param message {String}            Message w/ command to parse
+     * @param channel_name {String}       The channel to perform the operation in
+     */
+    chatWindowTextInputCommand: function( message, channel_name ) {
+      var
+        commands        = ['clear', 'join', 'me', 'msg', 'nick', 'notice', 'part', 'close', 'partall', 'closeall', 'ping', 'query', 'quit', 'ignore', 'whois', 'chat', 'help', 'h', 'list'],
+        match           = message.match(/^\/(\w+)/),
+        command         = (match) ? match[1] : false;
+
+      // Execute existing command
+      if (command && _.indexOf(commands, command) != -1) {
+        switch(true) {
+
+          // /CLEAR - clear content from chat window
+          case command == 'clear' :
+            var
+              channel_elm       = this.getUserChannelContainerElm(channel_name),
+              chat_window       = channel_elm.find('.pc-window');
+            chat_window.html('');
+            break;
+
+          // /JOIN - Join/switch to a channel
+          case command == 'join' :
+            var
+              match         = message.match(/#(\w+)/),
+              channel       = (match) ? match[1] : false;
+            if (channel) {
+              this.router.navigate(channel, {trigger: true, replace: true});
+            } else {
+              return false;
+            }
+            break;
+
+          // /ME - Sends an "action" message
+          case command == 'me' :
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: message.replace('/me ', ''),
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessageAction'
+            });
+            this.sendMessageToAllPeers('group-message-me', channel_name, message);
+            break;
+
+          // /MSG /NOTICE /QUERY /CHAT - Send message to a peer at a specified name
+          case command == 'msg' || command == 'notice' || command == 'query' || command == 'chat' :
+            var
+              self                    = this,
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(this.client_id),
+              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+                if (po.username == username) {
+                  po.client_id = id;
+                  return true;
+                }
+              }),
+              clean_message           = message.replace(/\/msg |\/notice |\/query/, '').replace(username, '');
+
+            // Add message to window
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: clean_message,
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessagePrivate'
+            });
+
+            // Send message to peers w/ the choosen user name
+            _.each(peer_obj_w_name, function(po) {
+              self.sendMessageToPeer('group-message-msg', po.client_id, channel_name, clean_message);
+            });
+            break;
+
+          // /LIST - Shows available channels, people in those channels
+          // @todo - implement this feature
+          case command == 'list' :
+            break;
+
+          // /NICK - Changes a users name
+          case command == 'nick' :
+            var
+              match               = message.split(/\s+/),
+              username            = (match) ? (match.length > 1) ? match[1] : false : false,
+              client_model        = this.getClientModel(),
+              old_username        = client_model.get('username');
+            if (username) {
+              this.updateUsername(old_username, username);
+            } else {
+              return false;
+            }
+            break;
+
+          // /PART - Leave a channel (UI button should send the same message to peers)
+          case command == 'part' || command == 'close' :
+            var
+              channel_label_elm       = this.getUserChannelLabelContainerElm(channel_name),
+              channel_button          = channel_label_elm.find('.button');
+            channel_button.trigger('click');
+            break;
+
+          // /PARTALL - Leaves all open channels
+          case command == 'partall' || command == 'closeall' :
+            $('.pc-channel-label').each(function(id, elm) {
+              console.log(elm);
+              $(elm).find('.button').trigger('click');
+            });
+            break;
+
+          // /PING - Send a ping request to peer
+          case command == 'ping' :
+            var
+              self                    = this,
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(this.client_id),
+              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+                if (po.username == username) {
+                  po.client_id = id;
+                  return true;
+                }
+              });
+
+            // Add message to window
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: '',
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessagePingRequest'
+            });
+
+            //// Send message to peers w/ the specified user name
+            _.each(peer_obj_w_name, function(po) {
+              self.sendMessageToPeer('peer-message-ping', po.client_id, channel_name, 'request');
+            });
+            break;
+
+          // /QUIT - disconnects from server altogether
+          // @todo - determine if this command is applicable
+          case command == 'quit' :
+            break;
+
+          // /IGNORE - Ignore/un-ignore a peer
+          case command == 'ignore' :
+            var
+              self                    = this,
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(this.client_id),
+              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+                if (po.username == username) {
+                  po.client_id = id;
+                  return true;
+                }
+              });
+
+            // Proceed if a peer w/ username exists
+            if (peer_obj_w_name.length) {
+              var
+                peer_obj        = peer_obj_w_name[0];
+
+              // Peer ignored
+              if (peer_obj.ignore) {
+                peer_obj.ignore = false;
+                this.addMessageToWindow({
+                  username: this.getClientModel().get('username'),
+                  message: username,
+                  id: this.client_id,
+                  channel_name: channel_name,
+                  template: 'userMessageIgnoreRemove'
+                });
+                this.sendMessageToAllPeers('peer-message-ignore', channel_name, 'remove|' + username);
+              }
+
+              // Peer not ignored
+              else {
+                peer_obj.ignore = true;
+                this.addMessageToWindow({
+                  username: this.getClientModel().get('username'),
+                  message: username,
+                  id: this.client_id,
+                  channel_name: channel_name,
+                  template: 'userMessageIgnoreAdd'
+                });
+                this.sendMessageToAllPeers('peer-message-ignore', channel_name, 'add|' + username);
+              }
+            }
+
+            // Peer by that username doesn't exist
+            else {
+              return false;
+            }
+            break;
+
+          // /WHOIS -
+          case command == 'whois' :
+            console.log('polling whois information...');
+            break;
+
+          // /HELP - Loads a help message
+          case command == 'help' || command == 'h' || command == '?' :
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: '',
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessageHelp'
+            });
+            break;
+        }
+        return true;
+      }
+
+      // No command to execute
+      else {
+        return false;
       }
     }
 

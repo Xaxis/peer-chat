@@ -19,11 +19,20 @@ define([
       /**
        * Makes col1 the same height as col2.
        *
-       * @param col1 {String|Object}
-       * @param col2 {String|Object}
+       * @param col1 {String|Object}        Selector/jObject
+       * @param col2 {String|Object}        Selector/jObject
        */
       equalizeColumnsHeights: function( col1, col2 ) {
         $(col1).eqheight(col2);
+      },
+
+      /**
+       * Scrolls the y-axis of a scrollable element to the bottom.
+       *
+       * @param elm {String|Object}         Selector/jObject
+       */
+      scrollToBottom: function( elm ) {
+        $(elm).animate({ scrollTop: $(elm)[0].scrollHeight}, 1000);
       }
     };
   };

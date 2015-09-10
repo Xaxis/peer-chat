@@ -73,7 +73,17 @@
   .pc-col-1 {
     @include fg-col($mod: '3/4');
     .pc-window {
-      .user-message-item {
+      .user-message-item,
+      .user-message-action,
+      .user-message-private,
+      .user-message-name-change,
+      .user-message-left-channel,
+      .user-message-joined-channel,
+      .user-message-ping-request,
+      .user-message-ping-answer,
+      .user-message-ignore-add,
+      .user-message-ignore-remove,
+      .user-message-help {
         .user-col {
         }
         .user-name {
@@ -84,6 +94,24 @@
           .user-name {
             font-weight: 800;
           }
+        }
+      }
+      .user-message-action,
+      .user-message-private,
+      .user-message-name-change,
+      .user-message-left-channel,
+      .user-message-joined-channel,
+      .user-message-ping-request,
+      .user-message-ping-answer,
+      .user-message-ignore-add,
+      .user-message-ignore-remove {
+        color: $heros-blue;
+        font-weight: bold;
+      }
+      .user-message-help {
+        .command {
+          color: $heros-blue;
+          font-family: courier, monospace;
         }
       }
     }

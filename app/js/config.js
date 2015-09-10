@@ -24,7 +24,8 @@
       // Native modules
       devgrid:              'libs/native/devgrid/devgrid',
       'modernizr-tests':    'libs/native/modernizr-tests/modernizr-tests',
-      ux:                   'libs/native/ux/ux'
+      ux:                   'libs/native/ux/ux',
+      status:               'libs/native/status/status'
     },
     shim: {
       'jquery.devgrid': ['jquery'],
