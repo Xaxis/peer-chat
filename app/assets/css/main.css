@@ -5304,7 +5304,9 @@ body {
     .peer-chat .pc-col-1 .pc-window .user-message-ping-answer.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-ignore-add.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-ignore-remove.me .user-name,
-    .peer-chat .pc-col-1 .pc-window .user-message-help.me .user-name {
+    .peer-chat .pc-col-1 .pc-window .user-message-help.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-list-all.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-list-user.me .user-name {
       font-weight: 800; }
     .peer-chat .pc-col-1 .pc-window .user-message-action,
     .peer-chat .pc-col-1 .pc-window .user-message-private,
@@ -5320,6 +5322,17 @@ body {
     .peer-chat .pc-col-1 .pc-window .user-message-help .command {
       color: #4e7ea0;
       font-family: courier, monospace; }
+    .peer-chat .pc-col-1 .pc-window .user-message-list-all .list-title .channel-command,
+    .peer-chat .pc-col-1 .pc-window .user-message-list-user .list-title .channel-command {
+      color: #4e7ea0;
+      font-weight: bold; }
+    .peer-chat .pc-col-1 .pc-window .user-message-list-all .list-row .channel-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-list-user .list-row .channel-name {
+      color: #4e7ea0;
+      font-weight: bold; }
+    .peer-chat .pc-col-1 .pc-window .user-message-list-all .channel-info,
+    .peer-chat .pc-col-1 .pc-window .user-message-list-user .channel-info {
+      color: #4e7ea0; }
   .peer-chat .pc-col-2, .peer-chat .user-list {
     position: relative;
     float: left;

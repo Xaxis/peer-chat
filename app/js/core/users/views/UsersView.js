@@ -21,7 +21,9 @@ define([
   'text!../templates/UserMessagePingAnswer.tpl.html',
   'text!../templates/UserMessageIgnoreAdd.tpl.html',
   'text!../templates/UserMessageIgnoreRemove.tpl.html',
-  'text!../templates/UserMessageHelp.tpl.html'
+  'text!../templates/UserMessageHelp.tpl.html',
+  'text!../templates/UserMessageListAll.tpl.html',
+  'text!../templates/UserMessageListUser.tpl.html'
 ], function(
   $,
   _,
@@ -42,7 +44,9 @@ define([
   tplUserMessagePingAnswer,
   tplUserMessageIgnoreAdd,
   tplUserMessageIgnoreRemove,
-  tplUserMessageHelp
+  tplUserMessageHelp,
+  tplUserMessageListAll,
+  tplUserMessageListUser
 ) {
   var UsersView = Backbone.View.extend({
     el: $('body'),
@@ -61,7 +65,9 @@ define([
       userMessagePingAnswer: _.template(tplUserMessagePingAnswer),
       userMessageIgnoreAdd: _.template(tplUserMessageIgnoreAdd),
       userMessageIgnoreRemove: _.template(tplUserMessageIgnoreRemove),
-      userMessageHelp: _.template(tplUserMessageHelp)
+      userMessageHelp: _.template(tplUserMessageHelp),
+      userMessageListAll: _.template(tplUserMessageListAll),
+      userMessageListUser: _.template(tplUserMessageListUser)
     },
 
     events: {
@@ -78,17 +84,18 @@ define([
 
     client_id: null,
 
-    router: null,
-
     /**
      * View initialization method.
      *
      * @param router {Object}       Reference to backbone router
+     * @param socket {Object}       Reference to socket.io
      */
-    initialize: function( router ) {
+    initialize: function( router, socket ) {
 
       // Bind methods
       _.bindAll(this,
+        'socketListChannels',
+        'socketListUserChannels',
         'addUserChannelElm',
         'getUserChannelContainerElm',
         'addUserChannelLabel',
@@ -120,11 +127,70 @@ define([
         'chatWindowTextInputCommand'
       );
 
-      // Reference the app router
+      // Initialize instance properties
       this.router = router;
-
-      // Initialize model collection
+      this.socket = socket;
       this.collection = new UsersCollection();
+
+      // Register socket.io event listeners
+      this.socket.on('list_channels', this.socketListChannels);
+      this.socket.on('list_user_channels', this.socketListUserChannels);
+    },
+
+    /**
+     * List available channels returned from the server.
+     *
+     * @param channel_obj {Object}        Response message from server
+     */
+    socketListChannels: function( channel_obj ) {
+      var
+        sorted_channels       = _.sortBy(channel_obj.channel_list, 'name');
+
+      // Map human readable channel creation time
+      _.each(sorted_channels, function(o, id, obj) {
+        obj[id].active = UX.getTimePassed(obj[id].active);
+      });
+
+      // Add channels list to the local window
+      this.addMessageToWindow({
+        username: this.getClientModel().get('username'),
+        message: {
+          channel_count: sorted_channels.length,
+          user_count: channel_obj.user_count,
+          channels: sorted_channels
+        },
+        id: this.client_id,
+        channel_name: channel_obj.requesting_channel,
+        template: 'userMessageListAll'
+      });
+    },
+
+    /**
+     * List available channels of a user returned from the server.
+     *
+     * @param channel_obj {Object}        Response message from server
+     */
+    socketListUserChannels: function( channel_obj ) {
+      var
+        sorted_channels       = _.sortBy(channel_obj.channel_list, 'name');
+
+      // Map human readable join time
+      _.each(sorted_channels, function(o, id, obj) {
+        obj[id].joined = UX.getTimePassed(obj[id].joined);
+      });
+
+      // Add channels list to the local window
+      this.addMessageToWindow({
+        username: this.getClientModel().get('username'),
+        message: {
+          peername: channel_obj.requesting_user,
+          channel_count: _.size(sorted_channels),
+          channels: sorted_channels
+        },
+        id: this.client_id,
+        channel_name: channel_obj.requesting_channel,
+        template: 'userMessageListUser'
+      });
     },
 
     /**
@@ -390,7 +456,7 @@ define([
         channel_id          = connecting ? 'peer_chat_' + peer_id + '_' + client_id : 'peer_chat_' + client_id + '_' + peer_id,
         ps                  = {},
         p2p                 = null,
-        peers               = this.getPeerConnections(client_id);
+        peers               = this.getPeerConnections();
 
       // Register peer when not already registered
       if (!(peer_id in peers)) {
@@ -443,7 +509,7 @@ define([
       // Update already connected peer in new channel
       } else {
         var
-          ps_obj        = this.getPeerConnections(this.client_id)[peer_id];
+          ps_obj        = this.getPeerConnections()[peer_id];
         this.addUserToList(peer_id, ps_obj.username, channel_name);
         self.sendMessageToAllPeers('channel-connect', channel_name, '');
       }
@@ -497,12 +563,13 @@ define([
     /**
      * Returns PeerSock objects stored in the connections property of the client model.
      *
-     * @param client_id {String}        The socket id of the client
-     * @returns {*}
+     * @returns {Array}
      */
-    getPeerConnections: function( client_id ) {
-      var client_model = this.collection.find(function(model) {
-        return model.get('client_id') == client_id;
+    getPeerConnections: function() {
+      var
+        self                = this,
+        client_model        = this.collection.find(function(model) {
+        return model.get('client_id') == self.client_id;
       });
       return client_model.get('connections');
     },
@@ -549,7 +616,7 @@ define([
     removeFromUserList: function( peer_id, channels ) {
       var
         self          = this,
-        peers         = this.getPeerConnections(this.client_id);
+        peers         = this.getPeerConnections();
 
       if (peers.hasOwnProperty(peer_id)) {
         _.each(peers[peer_id].channels, function(channel) {
@@ -594,23 +661,29 @@ define([
     },
 
     /**
-     * Appends a message to a #channel's chat window.
+     * Appends a message to a #channel's chat window. When 'opts.message' is passed as an object, the default template
+     * properties are extended with the properties in the passed object.
      *
      * @param opts {Object}
-     * @param opts.username {String}            User name of peer
-     * @param opts.message {String}             Message to add
-     * @param opts.id {String}                  The socket id of message source
-     * @param opts.channel_name {String}        The name of the #channel
-     * @param opts.template {String}            The name of the template object to use
+     * @param opts.username {String}              User name of peer
+     * @param opts.message {String|Object}        Message to add
+     * @param opts.id {String}                    The socket id of message source
+     * @param opts.channel_name {String}          The name of the #channel
+     * @param opts.template {String}              The name of the template object to use
      */
     addMessageToWindow: function( opts ) {
       var
-        channel_elm       = $('.pc-channel[data-channel-id="' + opts.channel_name + '"]');
-      channel_elm.find('.pc-window').append($(this.templates[opts.template]({
-        username: opts.username,
-        message: opts.message,
-        peer_id: opts.id
-      })).addClass(opts.id == this.client_id ? 'me' : ''));
+        channel_elm           = $('.pc-channel[data-channel-id="' + opts.channel_name + '"]'),
+        default_props         = {
+          username: opts.username,
+          message: opts.message,
+          peer_id: opts.id
+        },
+        template_props        = typeof opts.message == 'object' ? _.extend({}, default_props, opts.message): default_props;
+      channel_elm
+        .find('.pc-window')
+        .append($(this.templates[opts.template](template_props))
+          .addClass(opts.id == this.client_id ? 'me' : ''));
       UX.scrollToBottom(channel_elm.find('.pc-window'));
     },
 
@@ -802,7 +875,7 @@ define([
      */
     isPeerIgnored: function( peer_id ) {
       var
-        peer_objs       = this.getPeerConnections(this.client_id);
+        peer_objs       = this.getPeerConnections();
       if (peer_objs.hasOwnProperty(peer_id)) {
        if (peer_objs[peer_id].ignore) {
          return true;
@@ -823,7 +896,7 @@ define([
         // Connection establishment
         case command == 'connect' :
           var
-            peer_obj       = this.getPeerConnections(this.client_id)[data.id];
+            peer_obj       = this.getPeerConnections()[data.id];
           peer_obj.username = data.username;
           this.addUserToList(data.id, data.username, data.channel_name);
           break;
@@ -881,13 +954,11 @@ define([
         case command == 'name-change' :
 
           // Update username
-          var peer_obj = this.getPeerConnections(this.client_id)[data.id];
+          var peer_obj = this.getPeerConnections()[data.id];
           peer_obj.username = data.username;
 
-          // Update elements
-          // @todo - change this so it just updates the elements in a given channel
+          // Update username elements
           $('.user-list-item[data-peer-id="' + data.id + '"]').html(data.username);
-          $('.user-message-item[data-peer-id="' + data.id + '"]').find('.user-name').html(data.username);
 
           // Add message to chat window
           this.addMessageToWindow({
@@ -1007,7 +1078,7 @@ define([
               self                    = this,
               match                   = message.split(/\s+/),
               username                = (match) ? (match.length > 1) ? match[1] : false : false,
-              peer_objs               = this.getPeerConnections(this.client_id),
+              peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
                   po.client_id = id;
@@ -1031,9 +1102,38 @@ define([
             });
             break;
 
-          // /LIST - Shows available channels, people in those channels
-          // @todo - implement this feature
+          // /LIST - Shows available channels, number of people in those channels
+          // @todo - should get an error message when attempts are made to show a users channels that "doesn't exist"
           case command == 'list' :
+            var
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(),
+              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+                if (po.username == username) {
+                  po.client_id = id;
+                  return true;
+                }
+              }),
+              peer_obj                = peer_obj_w_name.length ? peer_obj_w_name : [
+                {client_id: this.client_id}
+              ];
+
+            // Request a user's channel list
+            if (username) {
+              this.socket.emit('list_user_channels', {
+                id: peer_obj[0].client_id,
+                username: username,
+                channel_name: channel_name
+              });
+            }
+
+            // Request all channels list
+            else if (!username) {
+              this.socket.emit('list_channels', {
+                channel_name: channel_name
+              });
+            }
             break;
 
           // /NICK - Changes a users name
@@ -1061,7 +1161,6 @@ define([
           // /PARTALL - Leaves all open channels
           case command == 'partall' || command == 'closeall' :
             $('.pc-channel-label').each(function(id, elm) {
-              console.log(elm);
               $(elm).find('.button').trigger('click');
             });
             break;
@@ -1072,7 +1171,7 @@ define([
               self                    = this,
               match                   = message.split(/\s+/),
               username                = (match) ? (match.length > 1) ? match[1] : false : false,
-              peer_objs               = this.getPeerConnections(this.client_id),
+              peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
                   po.client_id = id;
@@ -1083,7 +1182,7 @@ define([
             // Add message to window
             this.addMessageToWindow({
               username: this.getClientModel().get('username'),
-              message: '',
+              message: username,
               id: this.client_id,
               channel_name: channel_name,
               template: 'userMessagePingRequest'
@@ -1095,18 +1194,12 @@ define([
             });
             break;
 
-          // /QUIT - disconnects from server altogether
-          // @todo - determine if this command is applicable
-          case command == 'quit' :
-            break;
-
           // /IGNORE - Ignore/un-ignore a peer
           case command == 'ignore' :
             var
-              self                    = this,
               match                   = message.split(/\s+/),
               username                = (match) ? (match.length > 1) ? match[1] : false : false,
-              peer_objs               = this.getPeerConnections(this.client_id),
+              peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
                   po.client_id = id;
@@ -1152,7 +1245,7 @@ define([
             }
             break;
 
-          // /WHOIS -
+          // /WHOIS - @todo - implement this
           case command == 'whois' :
             console.log('polling whois information...');
             break;

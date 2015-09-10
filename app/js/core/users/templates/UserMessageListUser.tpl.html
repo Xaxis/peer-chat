@@ -1,0 +1,18 @@
+<!-- User Message List User -->
+<div class="user-message-list-user" data-peer-id="<%= peer_id %>">
+    <div class="list-title">
+        <p>
+            <span class="channel-command">[<%= username %>] LIST *<%= peername %>*</span>
+            <br>
+            Currently showing user <span class="channel-info"><%= peername %></span>
+            in <span class="channel-info"><%= channel_count %></span> channels.
+        </p>
+    </div>
+    <% _.each(channels, function(channel) { %>
+    <div class="list-row">
+        <a href="#<%= channel.name %>"><span class="channel-name">#<%= channel.name %></span></a>
+        was joined by <%= peername %> <span class="channel-info"><%= channel.joined %></span> ago.
+    </div>
+    <% }); %>
+</div>
+

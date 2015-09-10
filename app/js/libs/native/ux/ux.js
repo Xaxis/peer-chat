@@ -32,7 +32,37 @@ define([
        * @param elm {String|Object}         Selector/jObject
        */
       scrollToBottom: function( elm ) {
-        $(elm).animate({ scrollTop: $(elm)[0].scrollHeight}, 1000);
+        var
+          elm       = $(elm);
+        if (elm.length) {
+          elm.animate({ scrollTop: elm[0].scrollHeight}, 1000);
+        }
+      },
+
+      /**
+       * Returns a human friendly string indicating how much time has passed since a unix timestamp.
+       *
+       * @param timestamp {Number}        Time in seconds since Unix epoch.
+       */
+      getTimePassed: function( timestamp ) {
+        var
+          diff            = Math.abs(Date.now() - timestamp) / 1000,
+          secs            = Math.round(diff),
+          mins            = Math.round(secs / 60),
+          hours           = Math.round(mins / 60),
+          days            = Math.round(hours / 24),
+          years           = Math.round(days / 365),
+          dt_string       = '';
+        if (secs < 60) dt_string = secs + ' seconds';
+        else if (mins == 1) dt_string = '1 minute';
+        else if (mins > 1) dt_string = mins + ' minutes';
+        else if (hours == 1) dt_string = '1 hour';
+        else if (hours > 1) dt_string = hours + ' hours';
+        else if (days == 1) dt_string = '1 day';
+        else if (days > 1) dt_string = days + ' days';
+        else if (years == 1) dt_string = '1 year';
+        else if (years > 1) dt_string = years + ' years';
+        return dt_string;
       }
     };
   };

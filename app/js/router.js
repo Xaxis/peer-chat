@@ -3,10 +3,19 @@
 // @todo - function that prevents chat window from scrolling if user has scrolled up.
 // // continues scroll to bottom behavior if they scroll back to bottom manually.
 
-// @todo - write feature that determines if a peer is idle or not
+// @todo - write feature that determines if a peer is idle or not per channel
 
 // @todo - feature that makes sure that names can only be changed to a name that doesn't already exist
 // in all the channels a user is connected to.
+
+// @todo - prevent server from crashing from various UX states and allow for reconnection of peers when
+// server restarts (without needing peers to refresh their browsers)
+
+// @todo - add feature that allows users to specify a user name as a URL parameter
+
+// @todo - add better input validation on /command inputs, name change ui, new channel ui, etc.
+
+// @todo - seperate server code into "npm" modules loaded in by require
 /**
  * Router module
  */
@@ -55,7 +64,7 @@ define([
     initialize: function() {
       this.signal = PeerSock({socket: this.socket}).signal;
       this.app_router = new this.AppRouter;
-      this.usersView = new UsersView(this.app_router);
+      this.usersView = new UsersView(this.app_router, this.socket);
 
       // Bind methods
       _.bindAll(this,

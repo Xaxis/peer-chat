@@ -83,7 +83,9 @@
       .user-message-ping-answer,
       .user-message-ignore-add,
       .user-message-ignore-remove,
-      .user-message-help {
+      .user-message-help,
+      .user-message-list-all,
+      .user-message-list-user {
         .user-col {
         }
         .user-name {
@@ -112,6 +114,24 @@
         .command {
           color: $heros-blue;
           font-family: courier, monospace;
+        }
+      }
+      .user-message-list-all,
+      .user-message-list-user {
+        .list-title {
+          .channel-command {
+            color: $heros-blue;
+            font-weight: bold;
+          }
+        }
+        .list-row {
+          .channel-name {
+            color: $heros-blue;
+            font-weight: bold;
+          }
+        }
+        .channel-info {
+          color: $heros-blue;
         }
       }
     }

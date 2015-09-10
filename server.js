@@ -50,7 +50,8 @@ io.sockets.on('connection', function(socket) {
     if (!channels[channel]) {
       console.log('Channel "' + channel + '" CREATED');
       channels[channel] = {
-        hosts: {}
+        hosts: {},
+        created: Date.now()
       };
     }
 
@@ -66,7 +67,7 @@ io.sockets.on('connection', function(socket) {
         username: uniqueUsername(),
         whois: {
           ip: socket.client.conn.remoteAddress,
-          time: Date.now()
+          active: Date.now()
         }
       }
     }
@@ -83,6 +84,7 @@ io.sockets.on('connection', function(socket) {
         socket: socket,
         client_id: socket.id,
         channel: channel,
+        joined: Date.now(),
         init: {
           channel_name: channel,
           client_id: socket.id,
@@ -129,12 +131,14 @@ io.sockets.on('connection', function(socket) {
         }
 
         // Delete disconnecting peer's host object from channel
-        delete channels[channel].hosts[socket.id];
+        if (channels.hasOwnProperty(channel)) {
+          delete channels[channel].hosts[socket.id];
+        }
 
         // Remove channel if no further peers are residing
         if (_.size(channels[channel].hosts) <= 0) {
           delete channels[channel];
-          console.log('Channel "' + channel + '" REMOVED');
+          console.log('Channel "' + channel + '" REMOVED on peer disconnect');
         }
       });
     }
@@ -171,7 +175,69 @@ io.sockets.on('connection', function(socket) {
         delete channels[channel].hosts[socket.id];
         console.log('User ' + socket.id + 'LEFT channel "' + channel + '"');
       }
+
+      // Remove channel if there are no further users
+      if (_.size(channels[channel].hosts) <= 0) {
+        delete channels[channel];
+        console.log('Channel "' + channel + '" REMOVED on channel close');
+      }
     }
+  });
+
+  /**
+   * Listen for request to list all available channels.
+   */
+  socket.on('list_channels', function( msg ) {
+    console.log('User ' + socket.id + ' REQUESTING channel list');
+    var
+      channel_list        = [],
+      user_count          = _.size(hosts);
+
+    // Build channel list
+    _.each(channels, function(channel, name) {
+      channel_list.push({
+        name: name,
+        count: _.size(channel.hosts),
+        active: channel.created
+      });
+    });
+
+    // Send channels list back to client
+    socket.emit('list_channels', {
+      requesting_channel: msg.channel_name,
+      user_count: user_count,
+      channel_list: channel_list
+    });
+  });
+
+  /**
+   * Listen for request to list a user's active channels
+   */
+  socket.on('list_user_channels', function( msg ) {
+    console.log('User ' + socket.id + ' REQUESTING channel users list');
+    var
+      channel_list        = [];
+
+    // Proceed when user is connected
+    if (hosts.hasOwnProperty(msg.id)) {
+      _.each(hosts[msg.id].channels, function(channel) {
+        if (channels.hasOwnProperty(channel)) {
+          if (channels[channel].hosts.hasOwnProperty(msg.id)) {
+            channel_list.push({
+              name: channel,
+              joined: channels[channel].hosts[msg.id].joined
+            });
+          }
+        }
+      });
+    }
+
+    // Send channels list back to client
+    socket.emit('list_user_channels', {
+      requesting_user: msg.username,
+      requesting_channel: msg.channel_name,
+      channel_list: channel_list
+    });
   });
 
   /**
