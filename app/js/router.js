@@ -1,12 +1,6 @@
-// @todo - add "terminal like" feature to the text input that allows pressing the arrow keys to go back through the "command" history
-
-// @todo - function that prevents chat window from scrolling if user has scrolled up continues scroll to bottom behavior
-// if they scroll back to bottom manually.
+// @todo - feature that makes sure a username doesn't already exist
 
 // @todo - write feature that determines if a peer is idle or not per channel
-
-// @todo - feature that makes sure that names can only be changed to a name that doesn't already exist
-// in all the channels a user is connected to.
 
 // @todo - prevent server from crashing from various UX states and allow for reconnection of peers when
 // server restarts (without needing peers to refresh their browsers)

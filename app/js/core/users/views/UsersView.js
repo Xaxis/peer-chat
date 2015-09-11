@@ -219,7 +219,6 @@ define([
      *
      * @param channel {String}        The channel id
      */
-    // @todo - implement this method where applicable
     getUserChannelContainerElm: function( channel ) {
       if (typeof channel == 'string') {
         return $('.pc-channel[data-channel-id="' + channel + '"]');
@@ -685,7 +684,7 @@ define([
         .find('.pc-window')
         .append($(this.templates[opts.template](template_props))
           .addClass(opts.id == this.client_id ? 'me' : ''));
-      UX.scrollToBottom(channel_elm.find('.pc-window'));
+      UX.scrollToBottom(channel_elm.find('.pc-window'), channel_elm.find('.pc-text-input'));
     },
 
     /**
@@ -852,6 +851,8 @@ define([
         message             = target.val(),
         key_code            = e.keyCode;
       switch (key_code) {
+
+        // Return/Enter
         case 13 :
           if (!this.chatWindowTextInputCommand(message, channel_name)) {
             this.addMessageToWindow({
@@ -863,9 +864,27 @@ define([
             });
             this.sendMessageToAllPeers('group-message', channel_name, message);
           }
+
+          // Store command history
+          UX.pushOnElmStack(target, 'history', message, 99);
+
+          // Clear input
           target.val('');
           return false;
           break;
+
+        // Up arrow - Unix style command history
+        case 38 :
+          UX.unixTerminalHistoryOnInputElm(target, target.data('history'), target.data('stack-pointer'), 'up');
+          return false;
+          break;
+
+        // Down arrow - Unix style command history
+        case 40 :
+          UX.unixTerminalHistoryOnInputElm(target, target.data('history'), target.data('stack-pointer'), 'down');
+          return false;
+          break;
+
       }
     },
 
@@ -1035,7 +1054,8 @@ define([
       var
         commands        = ['clear', 'join', 'me', 'msg', 'nick', 'notice', 'part', 'close', 'partall', 'closeall', 'ping', 'query', 'quit', 'ignore', 'whois', 'chat', 'help', 'h', 'list'],
         match           = message.match(/^\/(\w+)/),
-        command         = (match) ? match[1] : false;
+        command         = (match) ? match[1] : false,
+        success         = false;
 
       // Execute existing command
       if (command && _.indexOf(commands, command) != -1) {
