@@ -43,7 +43,8 @@ io.sockets.on('connection', function(socket) {
     if (!msg.channel) {
       console.log('User ' + socket.id + ' ATTEMPTING registration w/o channel');
       socket.emit('ready_init', {
-        channel_name: channel
+        channel_name: channel,
+        username: username
       });
       return false;
     }

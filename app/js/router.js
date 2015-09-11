@@ -1,21 +1,15 @@
-// @todo - implement /whois feature
-
 // @todo - write feature that determines if a peer is idle or not in a given channel
 
 // @todo - prevent server from crashing from various UX states and allow for reconnection of peers when
 // server restarts (without needing peers to refresh their browsers)
 
-// @todo - add feature that allows users to specify a user name as a URL parameter
-
 // @todo - add better input validation on /command inputs, name change ui, new channel ui, etc.
 
-// @todo - seperate server code into "npm" modules loaded in by require
+// @todo - separate server code into "npm" modules loaded in by require
 
 // @todo - set 'client_id' on connected peers "peer object" upon connection (so this doesn't need to be done elsewhere)
 
 // @todo - determine/establish maximum peer connections a user can have in correlation w/ number of channels
-
-// @todo - show how many users are in a given channel via the UI
 
 // @todo - solve for icecandidate failures by attempting to reconnect failed peer connections
 /**

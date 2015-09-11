@@ -1161,6 +1161,8 @@ define([
             break;
 
           // /MSG /NOTICE /QUERY /CHAT - Send message to a peer at a specified name
+          // @todo - modify so you can /msg yourself
+          // @todo - should show an error message when targeted user does not exist (or is now offline)
           case command == 'msg' || command == 'notice' || command == 'query' || command == 'chat' :
             var
               self                    = this,
@@ -1169,7 +1171,6 @@ define([
               peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po) {
                 if (po.username == username) {
-                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               }),
@@ -1191,7 +1192,7 @@ define([
             break;
 
           // /LIST - Shows available channels, number of people in those channels
-          // @todo - should get an error message when attempts are made to show a users channels that "doesn't exist"
+          // @todo - should show an error when querying a user that does not exist (or is now offline)
           case command == 'list' :
             var
               match                   = message.split(/\s+/),
@@ -1199,7 +1200,6 @@ define([
               peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
-                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               }),
@@ -1258,6 +1258,8 @@ define([
             break;
 
           // /PING - Send a ping request to peer
+          // @todo - modify so you can /ping yourself
+          // @todo - should get an error message when attempts are made to ping a user who doesn't exist
           case command == 'ping' :
             var
               self                    = this,
@@ -1266,7 +1268,6 @@ define([
               peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
-                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               });
@@ -1287,6 +1288,7 @@ define([
             break;
 
           // /IGNORE - Ignore/un-ignore a peer
+          // @todo - should have an error message when ignoring a peer who does not exist
           case command == 'ignore' :
             var
               match                   = message.split(/\s+/),
@@ -1294,7 +1296,6 @@ define([
               peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
-                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               });
