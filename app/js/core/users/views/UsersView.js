@@ -468,6 +468,7 @@ define([
         });
 
         // Set initial peer options
+        ps[peer_id].client_id = peer_id;      // @todo - is this being implemented upon connection?
         ps[peer_id].username = 'anonymous';   // @todo - determine if this needs to be set here
         ps[peer_id].ignore = false;
 
@@ -1079,9 +1080,9 @@ define([
               match                   = message.split(/\s+/),
               username                = (match) ? (match.length > 1) ? match[1] : false : false,
               peer_objs               = this.getPeerConnections(),
-              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+              peer_obj_w_name         = _.filter(peer_objs, function(po) {
                 if (po.username == username) {
-                  po.client_id = id;
+                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               }),
@@ -1111,7 +1112,7 @@ define([
               peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
-                  po.client_id = id;
+                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               }),
@@ -1174,7 +1175,7 @@ define([
               peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
-                  po.client_id = id;
+                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               });
@@ -1202,7 +1203,7 @@ define([
               peer_objs               = this.getPeerConnections(),
               peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
                 if (po.username == username) {
-                  po.client_id = id;
+                  //po.client_id = id;    // @todo - is this being set upon peer registration?
                   return true;
                 }
               });

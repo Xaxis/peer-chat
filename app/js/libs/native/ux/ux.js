@@ -27,15 +27,31 @@ define([
       },
 
       /**
-       * Scrolls the y-axis of a scrollable element to the bottom.
+       * Scrolls the y-axis of a scrollable element to the bottom of the scrollable height. Will not scroll if the
+       * element is in state focused. Attaches a scroll event listener which removes focus when the scroll bar reaches
+       * the bottom and gives focus otherwise.
        *
        * @param elm {String|Object}         Selector/jObject
        */
       scrollToBottom: function( elm ) {
         var
-          elm       = $(elm);
-        if (elm.length) {
+          elm         = $(elm),
+          scroll      = elm.data('scroll-attached'),
+          focus       = elm.is(':focus');
+        if (elm.length && !focus) {
           elm.animate({ scrollTop: elm[0].scrollHeight}, 1000);
+        }
+        if (!scroll) {
+          elm.data('scroll-attached', true);
+          elm.on('scroll', function() {
+            var
+              scroll_dist       = elm.outerHeight() + elm.scrollTop();
+            if (scroll_dist == elm[0].scrollHeight) {
+              elm.blur();
+            } else {
+              elm.focus();
+            }
+          });
         }
       },
 

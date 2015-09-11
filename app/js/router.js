@@ -1,7 +1,7 @@
 // @todo - add "terminal like" feature to the text input that allows pressing the arrow keys to go back through the "command" history
 
-// @todo - function that prevents chat window from scrolling if user has scrolled up.
-// // continues scroll to bottom behavior if they scroll back to bottom manually.
+// @todo - function that prevents chat window from scrolling if user has scrolled up continues scroll to bottom behavior
+// if they scroll back to bottom manually.
 
 // @todo - write feature that determines if a peer is idle or not per channel
 
@@ -16,6 +16,14 @@
 // @todo - add better input validation on /command inputs, name change ui, new channel ui, etc.
 
 // @todo - seperate server code into "npm" modules loaded in by require
+
+// @todo - set 'client_id' on connected peers "peer object" upon connection (so this doesn't need to be done elsewhere)
+
+// @todo - determine/establish maximum peer connections a user can have in correlation w/ number of channels
+
+// @todo - show how many users are in a given channel via the UI
+
+// @todo - solve for icecandidate failures by attempting to reconnect failed peer connections
 /**
  * Router module
  */
