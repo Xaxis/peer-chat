@@ -5298,6 +5298,7 @@ body {
     .peer-chat .pc-col-1 .pc-window .user-message-action.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-private.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-name-change.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-name-unavailable.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-left-channel.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-joined-channel.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-ping-request.me .user-name,
@@ -5306,17 +5307,24 @@ body {
     .peer-chat .pc-col-1 .pc-window .user-message-ignore-remove.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-help.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-list-all.me .user-name,
-    .peer-chat .pc-col-1 .pc-window .user-message-list-user.me .user-name {
+    .peer-chat .pc-col-1 .pc-window .user-message-list-user.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-whois.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-whois-request.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-whois-error.me .user-name {
       font-weight: 800; }
     .peer-chat .pc-col-1 .pc-window .user-message-action,
     .peer-chat .pc-col-1 .pc-window .user-message-private,
     .peer-chat .pc-col-1 .pc-window .user-message-name-change,
+    .peer-chat .pc-col-1 .pc-window .user-message-name-unavailable,
     .peer-chat .pc-col-1 .pc-window .user-message-left-channel,
     .peer-chat .pc-col-1 .pc-window .user-message-joined-channel,
     .peer-chat .pc-col-1 .pc-window .user-message-ping-request,
     .peer-chat .pc-col-1 .pc-window .user-message-ping-answer,
     .peer-chat .pc-col-1 .pc-window .user-message-ignore-add,
-    .peer-chat .pc-col-1 .pc-window .user-message-ignore-remove {
+    .peer-chat .pc-col-1 .pc-window .user-message-ignore-remove,
+    .peer-chat .pc-col-1 .pc-window .user-message-whois,
+    .peer-chat .pc-col-1 .pc-window .user-message-whois-request,
+    .peer-chat .pc-col-1 .pc-window .user-message-whois-error {
       color: #4e7ea0;
       font-weight: bold; }
     .peer-chat .pc-col-1 .pc-window .user-message-help .command {

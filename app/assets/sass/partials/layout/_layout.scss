@@ -77,6 +77,7 @@
       .user-message-action,
       .user-message-private,
       .user-message-name-change,
+      .user-message-name-unavailable,
       .user-message-left-channel,
       .user-message-joined-channel,
       .user-message-ping-request,
@@ -85,7 +86,10 @@
       .user-message-ignore-remove,
       .user-message-help,
       .user-message-list-all,
-      .user-message-list-user {
+      .user-message-list-user,
+      .user-message-whois,
+      .user-message-whois-request,
+      .user-message-whois-error {
         .user-col {
         }
         .user-name {
@@ -101,12 +105,16 @@
       .user-message-action,
       .user-message-private,
       .user-message-name-change,
+      .user-message-name-unavailable,
       .user-message-left-channel,
       .user-message-joined-channel,
       .user-message-ping-request,
       .user-message-ping-answer,
       .user-message-ignore-add,
-      .user-message-ignore-remove {
+      .user-message-ignore-remove,
+      .user-message-whois,
+      .user-message-whois-request,
+      .user-message-whois-error {
         color: $heros-blue;
         font-weight: bold;
       }

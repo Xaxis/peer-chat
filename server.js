@@ -8,13 +8,15 @@ var
   channels            = {},
   usernames           = {},
   server              = null,
-  uniqueUsername      = function() {
+  uniqueUsername      = function( socket ) {
     var
       name        = 'anony' + _.random(100000, 999999);
     if (usernames.hasOwnProperty(name)) {
-      return uniqueUsername();
+      return uniqueUsername( socket );
     } else {
-      usernames[name] = true;
+      usernames[name] = {
+        id: socket.id
+      };
       return name;
     }
   };
@@ -64,7 +66,7 @@ io.sockets.on('connection', function(socket) {
         socket: socket,
         client_id: socket.id,
         channels: [],
-        username: uniqueUsername(),
+        username: uniqueUsername(socket),
         whois: {
           ip: socket.client.conn.remoteAddress,
           active: Date.now()
@@ -241,9 +243,62 @@ io.sockets.on('connection', function(socket) {
   });
 
   /**
+   * Listen for request to change a username.
+   */
+  socket.on('username_change', function( msg ) {
+    console.log('User ' + socket.id + ' REQUESTING name change');
+    if (usernames.hasOwnProperty(msg.new_username)) {
+      console.log('User ' + socket.id + ' SUCCESSFUL name change');
+      socket.emit('username_change', {
+        success: false,
+        old_username: msg.old_username,
+        new_username: msg.new_username,
+        channel_name: msg.channel_name
+      });
+    } else {
+      console.log('User ' + socket.id + ' FAILED name change');
+      usernames[msg.new_username] = {
+        id: socket.id
+      };
+      hosts[socket.id].username = msg.new_username;
+      delete usernames[msg.old_username];
+      socket.emit('username_change', {
+        success: true,
+        old_username: msg.old_username,
+        new_username: msg.new_username,
+        channel_name: msg.channel_name
+      });
+    }
+  });
+
+  /**
+   * Listen for "whois" request on a given user.
+   */
+  socket.on('whois_user', function( msg ) {
+    console.log('User ' + socket.id + ' REQUESTING whois of USER ' + msg.username);
+    if (usernames.hasOwnProperty(msg.username)) {
+      socket.emit('whois_user', {
+        success: true,
+        username: msg.username,
+        channel_name: msg.channel_name,
+        socket_id: usernames[msg.username].id,
+        peer_ip: hosts[usernames[msg.username].id].whois.ip,
+        host_name: socket.handshake.headers.host
+      });
+    } else {
+      socket.emit('whois_user', {
+        success: false,
+        username: msg.username,
+        channel_name: msg.channel_name
+      });
+    }
+  });
+
+  /**
    * Listen on request to send data message to target peer.
    */
   socket.on('MessageToPeer', function( msg ) {
+    console.log('User ' + socket.id + ' MESSAGING on SIGNAL ' + msg.handler_id + ' to PEER ' + msg.peer_id);
     var
       target_peer   = null,
       handler       = msg.handler_id;

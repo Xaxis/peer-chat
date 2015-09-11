@@ -15,6 +15,7 @@ define([
   'text!../templates/UserMessageAction.tpl.html',
   'text!../templates/UserMessagePrivate.tpl.html',
   'text!../templates/UserMessageNameChange.tpl.html',
+  'text!../templates/UserMessageNameUnavailable.tpl.html',
   'text!../templates/UserMessageLeftChannel.tpl.html',
   'text!../templates/UserMessageJoinedChannel.tpl.html',
   'text!../templates/UserMessagePingRequest.tpl.html',
@@ -23,7 +24,10 @@ define([
   'text!../templates/UserMessageIgnoreRemove.tpl.html',
   'text!../templates/UserMessageHelp.tpl.html',
   'text!../templates/UserMessageListAll.tpl.html',
-  'text!../templates/UserMessageListUser.tpl.html'
+  'text!../templates/UserMessageListUser.tpl.html',
+  'text!../templates/UserMessageWhois.tpl.html',
+  'text!../templates/UserMessageWhoisRequest.tpl.html',
+  'text!../templates/UserMessageWhoisError.tpl.html'
 ], function(
   $,
   _,
@@ -38,6 +42,7 @@ define([
   tplUserMessageAction,
   tplUserMessagePrivate,
   tplUserMessageNameChange,
+  tplUserMessageNameUnavailable,
   tplUserMessageLeftChannel,
   tplUserMessageJoinedChannel,
   tplUserMessagePingRequest,
@@ -46,11 +51,13 @@ define([
   tplUserMessageIgnoreRemove,
   tplUserMessageHelp,
   tplUserMessageListAll,
-  tplUserMessageListUser
+  tplUserMessageListUser,
+  tplUserMessageWhois,
+  tplUserMessageWhoisRequest,
+  tplUserMessageWhoisError
 ) {
   var UsersView = Backbone.View.extend({
     el: $('body'),
-
     templates: {
       userChannel: _.template(tplUserChannel),
       userChannelLabel: _.template(tplUserChannelLabel),
@@ -59,6 +66,7 @@ define([
       userMessageAction: _.template(tplUserMessageAction),
       userMessagePrivate: _.template(tplUserMessagePrivate),
       userMessageNameChange: _.template(tplUserMessageNameChange),
+      userMessageNameUnavailable: _.template(tplUserMessageNameUnavailable),
       userMessageLeftChannel: _.template(tplUserMessageLeftChannel),
       userMessageJoinedChannel: _.template(tplUserMessageJoinedChannel),
       userMessagePingRequest: _.template(tplUserMessagePingRequest),
@@ -67,9 +75,11 @@ define([
       userMessageIgnoreRemove: _.template(tplUserMessageIgnoreRemove),
       userMessageHelp: _.template(tplUserMessageHelp),
       userMessageListAll: _.template(tplUserMessageListAll),
-      userMessageListUser: _.template(tplUserMessageListUser)
+      userMessageListUser: _.template(tplUserMessageListUser),
+      userMessageWhois: _.template(tplUserMessageWhois),
+      userMessageWhoisRequest: _.template(tplUserMessageWhoisRequest),
+      userMessageWhoisError: _.template(tplUserMessageWhoisError)
     },
-
     events: {
       'click .pc-channel-label': 'userChannelLabelSwitch',
       'click .pc-channel-label .button': 'userChannelLabelClose',
@@ -81,7 +91,6 @@ define([
       'click .user-list-item.me': 'userListItemNameChange',
       'keypress .user-list-item.me input': 'userListItemNameChangeConfirm'
     },
-
     client_id: null,
 
     /**
@@ -96,6 +105,9 @@ define([
       _.bindAll(this,
         'socketListChannels',
         'socketListUserChannels',
+        'socketUsernameChangeRequest',
+        'socketWhoisUser',
+        'updateUsername',
         'addUserChannelElm',
         'getUserChannelContainerElm',
         'addUserChannelLabel',
@@ -120,7 +132,6 @@ define([
         'sendMessageToAllPeers',
         'userListItemNameChange',
         'userListItemNameChangeConfirm',
-        'updateUsername',
         'chatWindowTextInputHandler',
         'isPeerIgnored',
         'messageCommandParser',
@@ -135,6 +146,8 @@ define([
       // Register socket.io event listeners
       this.socket.on('list_channels', this.socketListChannels);
       this.socket.on('list_user_channels', this.socketListUserChannels);
+      this.socket.on('username_change', this.socketUsernameChangeRequest);
+      this.socket.on('whois_user', this.socketWhoisUser);
     },
 
     /**
@@ -194,6 +207,89 @@ define([
     },
 
     /**
+     * Upon username change verification, update a users name, otherwise display error message.
+     *
+     * @param msg {Object}        Response message from server
+     */
+    socketUsernameChangeRequest: function( msg ) {
+      if (msg.success) {
+        this.updateUsername(msg.old_username, msg.new_username);
+      } else {
+        this.addMessageToWindow({
+          username: msg.old_username,
+          message: msg.new_username,
+          id: this.client_id,
+          channel_name: msg.channel_name,
+          template: 'userMessageNameUnavailable'
+        });
+      }
+    },
+
+    /**
+     * Responds to a user triggered "/whois" request sent from server.
+     *
+     * @param msg {Object}        Response message from server
+     */
+    socketWhoisUser: function( msg ) {
+      if (msg.success) {
+        this.addMessageToWindow({
+          username: this.getClientModel().get('username'),
+          message: {
+            peer_ip: msg.peer_ip,
+            host_name: msg.host_name,
+            username: msg.username
+          },
+          id: this.client_id,
+          channel_name: msg.channel_name,
+          template: 'userMessageWhois'
+        });
+      } else {
+        console.log(msg);
+        this.addMessageToWindow({
+          username: this.getClientModel().get('username'),
+          message: msg.username,
+          id: this.client_id,
+          channel_name: msg.channel_name,
+          template: 'userMessageWhoisError'
+        });
+      }
+    },
+
+    /**
+     * Handles updating actions when a user changes their name.
+     *
+     * @param old_username {String}       The previous name
+     * @param new_username {String}       The name to change to
+     */
+    updateUsername: function( old_username, new_username ) {
+      var
+        self              = this,
+        client_model      = this.getClientModel(),
+        channel_list      = client_model.get('channels');
+
+      // Update client model prop
+      client_model.set('username', new_username);
+
+      // Add message to users open channel windows
+      _.each(channel_list, function(co, cname) {
+        self.addMessageToWindow({
+          username: old_username,
+          message: new_username,
+          id: self.client_id,
+          channel_name: cname,
+          template: 'userMessageNameChange'
+        });
+
+        // Update user list element w/ new username
+        var list_elm = self.getUserChannelContainerElm(cname).find('.user-list-item.me');
+        list_elm.html(new_username);
+
+        // Notify peers in channel
+        self.sendMessageToAllPeers('name-change', cname, old_username);
+      });
+    },
+
+    /**
      * Adds user channel elements to the DOM.
      *
      * @param channel {String}        The channel id
@@ -217,8 +313,9 @@ define([
      * Returns the channel container element at a given id. When channel is passed as an element, attempts to find
      * the channel container assuming the passed element is a descendant.
      *
-     * @param channel {String}        The channel id
+     * @param channel {String|Object}        The channel id
      */
+    // @todo - implement this method where applicable
     getUserChannelContainerElm: function( channel ) {
       if (typeof channel == 'string') {
         return $('.pc-channel[data-channel-id="' + channel + '"]');
@@ -799,43 +896,13 @@ define([
         parent.data('name-change-active', false);
         target.remove();
 
-        // Update the user name
-        this.updateUsername(old_username, username);
-      }
-    },
-
-    /**
-     * Handles updating actions when a user changes their name.
-     *
-     * @param old_username {String}       The previous name
-     * @param new_username {String}       The name to change to
-     */
-    updateUsername: function( old_username, new_username ) {
-      var
-        self              = this,
-        client_model      = this.getClientModel(),
-        channel_list      = client_model.get('channels');
-
-      // Update client model prop
-      client_model.set('username', new_username);
-
-      // Add message to users open channel windows
-      _.each(channel_list, function(co, cname) {
-        self.addMessageToWindow({
-          username: old_username,
-          message: new_username,
-          id: self.client_id,
-          channel_name: cname,
-          template: 'userMessageNameChange'
+        // Attempt to update a username
+        this.socket.emit('username_change', {
+          channel_name: this.getUserChannelContainerElm(parent).attr('data-channel-id'),
+          old_username: old_username,
+          new_username: username
         });
-
-        // Update user list element w/ new username
-        var list_elm = self.getUserChannelContainerElm(cname).find('.user-list-item.me');
-        list_elm.html(new_username);
-
-        // Notify peers in channel
-        self.sendMessageToAllPeers('name-change', cname, old_username);
-      });
+      }
     },
 
     /**
@@ -1165,7 +1232,11 @@ define([
               client_model        = this.getClientModel(),
               old_username        = client_model.get('username');
             if (username) {
-              this.updateUsername(old_username, username);
+              this.socket.emit('username_change', {
+                channel_name: channel_name,
+                old_username: old_username,
+                new_username: username
+              });
             } else {
               return false;
             }
@@ -1266,9 +1337,26 @@ define([
             }
             break;
 
-          // /WHOIS - @todo - implement this
+          // /WHOIS - Performs a whois query on a given user
           case command == 'whois' :
-            console.log('polling whois information...');
+            var
+              match               = message.split(/\s+/),
+              username            = (match) ? (match.length > 1) ? match[1] : false : false;
+            if (username) {
+              this.socket.emit('whois_user', {
+                channel_name: channel_name,
+                username: username
+              });
+              this.addMessageToWindow({
+                username: this.getClientModel().get('username'),
+                message: username,
+                id: this.client_id,
+                channel_name: channel_name,
+                template: 'userMessageWhoisRequest'
+              });
+            } else {
+              return false;
+            }
             break;
 
           // /HELP - Loads a help message

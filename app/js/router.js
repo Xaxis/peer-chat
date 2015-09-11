@@ -1,6 +1,6 @@
-// @todo - feature that makes sure a username doesn't already exist
+// @todo - implement /whois feature
 
-// @todo - write feature that determines if a peer is idle or not per channel
+// @todo - write feature that determines if a peer is idle or not in a given channel
 
 // @todo - prevent server from crashing from various UX states and allow for reconnection of peers when
 // server restarts (without needing peers to refresh their browsers)
