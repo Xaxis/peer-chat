@@ -1,3 +1,5 @@
+// @todo - solve for when socket.io times out, solve for when ICE fails on a connection
+
 // @todo - creating "loading message" system, including information when a timeout/error occurs
 
 // @todo - write feature that determines if a peer is idle or not in a given channel

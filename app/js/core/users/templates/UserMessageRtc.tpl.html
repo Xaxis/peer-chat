@@ -1,0 +1,18 @@
+<!-- User Message Rtc -->
+<div class="user-message-rtc" data-peer-id="<%= peer_id %>">
+    <p>
+        <span class="user-name">[<%= username %>]</span>
+        <span class="user-message"> RTC user *<%= message.username %>*</span>
+    </p>
+    <p>
+        <strong>Remote Description:</strong>
+        <br>
+        <pre><%= message.rsdp %></pre>
+    </p>
+    <p>
+        <strong>Local Description:</strong>
+        <br>
+        <pre><%= message.lsdp %></pre>
+    </p>
+</div>
+

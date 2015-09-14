@@ -5311,7 +5311,8 @@ body {
     .peer-chat .pc-col-1 .pc-window .user-message-list-user.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-whois.me .user-name,
     .peer-chat .pc-col-1 .pc-window .user-message-whois-request.me .user-name,
-    .peer-chat .pc-col-1 .pc-window .user-message-whois-error.me .user-name {
+    .peer-chat .pc-col-1 .pc-window .user-message-whois-error.me .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-rtc.me .user-name {
       font-weight: 800; }
     .peer-chat .pc-col-1 .pc-window .user-message-action,
     .peer-chat .pc-col-1 .pc-window .user-message-private,
@@ -5325,7 +5326,8 @@ body {
     .peer-chat .pc-col-1 .pc-window .user-message-ignore-remove,
     .peer-chat .pc-col-1 .pc-window .user-message-whois,
     .peer-chat .pc-col-1 .pc-window .user-message-whois-request,
-    .peer-chat .pc-col-1 .pc-window .user-message-whois-error {
+    .peer-chat .pc-col-1 .pc-window .user-message-whois-error,
+    .peer-chat .pc-col-1 .pc-window .user-message-error {
       color: #4e7ea0;
       font-weight: bold; }
     .peer-chat .pc-col-1 .pc-window .user-message-help .command {
@@ -5342,6 +5344,12 @@ body {
     .peer-chat .pc-col-1 .pc-window .user-message-list-all .channel-info,
     .peer-chat .pc-col-1 .pc-window .user-message-list-user .channel-info {
       color: #4e7ea0; }
+    .peer-chat .pc-col-1 .pc-window .user-message-rtc .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-rtc .user-message,
+    .peer-chat .pc-col-1 .pc-window .user-message-rtc-error .user-name,
+    .peer-chat .pc-col-1 .pc-window .user-message-rtc-error .user-message {
+      color: #4e7ea0;
+      font-weight: bold; }
   .peer-chat .pc-col-2, .peer-chat .user-list {
     position: relative;
     float: left;

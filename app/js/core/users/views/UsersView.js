@@ -27,7 +27,9 @@ define([
   'text!../templates/UserMessageListUser.tpl.html',
   'text!../templates/UserMessageWhois.tpl.html',
   'text!../templates/UserMessageWhoisRequest.tpl.html',
-  'text!../templates/UserMessageWhoisError.tpl.html'
+  'text!../templates/UserMessageWhoisError.tpl.html',
+  'text!../templates/UserMessageRtc.tpl.html',
+  'text!../templates/UserMessageRtcError.tpl.html'
 ], function(
   $,
   _,
@@ -54,7 +56,9 @@ define([
   tplUserMessageListUser,
   tplUserMessageWhois,
   tplUserMessageWhoisRequest,
-  tplUserMessageWhoisError
+  tplUserMessageWhoisError,
+  tplUserMessageRtc,
+  tplUserMessageRtcError
 ) {
   var UsersView = Backbone.View.extend({
     el: $('body'),
@@ -78,7 +82,9 @@ define([
       userMessageListUser: _.template(tplUserMessageListUser),
       userMessageWhois: _.template(tplUserMessageWhois),
       userMessageWhoisRequest: _.template(tplUserMessageWhoisRequest),
-      userMessageWhoisError: _.template(tplUserMessageWhoisError)
+      userMessageWhoisError: _.template(tplUserMessageWhoisError),
+      userMessageRtc: _.template(tplUserMessageRtc),
+      userMessageRtcError: _.template(tplUserMessageRtcError)
     },
     events: {
       'click .pc-channel-label': 'userChannelLabelSwitch',
@@ -1118,7 +1124,10 @@ define([
      */
     chatWindowTextInputCommand: function( message, channel_name ) {
       var
-        commands        = ['clear', 'join', 'me', 'msg', 'nick', 'notice', 'part', 'close', 'partall', 'closeall', 'ping', 'query', 'quit', 'ignore', 'whois', 'chat', 'help', 'h', 'list'],
+        commands        = [
+          'clear', 'join', 'me', 'msg', 'nick', 'notice', 'part', 'close', 'partall', 'closeall', 'ping',
+          'query', 'quit', 'ignore', 'rtc', 'whois', 'chat', 'help', 'h', 'list'
+        ],
         match           = message.match(/^\/(\w+)/),
         command         = (match) ? match[1] : false;
 
@@ -1134,156 +1143,18 @@ define([
             chat_window.html('');
             break;
 
-          // /JOIN - Join/switch to a channel
-          case command == 'join' :
-            var
-              match         = message.match(/#(\w+)/),
-              channel       = (match) ? match[1] : false;
-            if (channel) {
-              this.router.navigate(channel, {trigger: true, replace: true});
-            } else {
-              return false;
-            }
-            break;
 
-          // /ME - Sends an "action" message
-          case command == 'me' :
+          // /HELP - Loads a help message
+          case command == 'help' || command == 'h' || command == '?' :
             this.addMessageToWindow({
               username: this.getClientModel().get('username'),
-              message: message.replace('/me ', ''),
+              message: '',
               id: this.client_id,
               channel_name: channel_name,
-              template: 'userMessageAction'
-            });
-            this.sendMessageToAllPeers('group-message-me', channel_name, message);
-            break;
-
-          // /MSG /NOTICE /QUERY /CHAT - Send message to a peer at a specified name
-          // @todo - modify so you can /msg yourself
-          // @todo - should show an error message when targeted user does not exist (or is now offline)
-          case command == 'msg' || command == 'notice' || command == 'query' || command == 'chat' :
-            var
-              self                    = this,
-              match                   = message.split(/\s+/),
-              username                = (match) ? (match.length > 1) ? match[1] : false : false,
-              peer_objs               = this.getPeerConnections(),
-              peer_obj_w_name         = _.filter(peer_objs, function(po) {
-                if (po.username == username) {
-                  return true;
-                }
-              }),
-              clean_message           = message.replace(/\/msg |\/notice |\/query/, '').replace(username, '');
-
-            // Add message to window
-            this.addMessageToWindow({
-              username: this.getClientModel().get('username'),
-              message: clean_message,
-              id: this.client_id,
-              channel_name: channel_name,
-              template: 'userMessagePrivate'
-            });
-
-            // Send message to peers w/ the choosen user name
-            _.each(peer_obj_w_name, function(po) {
-              self.sendMessageToPeer('group-message-msg', po.client_id, channel_name, clean_message);
+              template: 'userMessageHelp'
             });
             break;
 
-          // /LIST - Shows available channels, number of people in those channels
-          // @todo - should show an error when querying a user that does not exist (or is now offline)
-          case command == 'list' :
-            var
-              match                   = message.split(/\s+/),
-              username                = (match) ? (match.length > 1) ? match[1] : false : false,
-              peer_objs               = this.getPeerConnections(),
-              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
-                if (po.username == username) {
-                  return true;
-                }
-              }),
-              peer_obj                = peer_obj_w_name.length ? peer_obj_w_name : [
-                {client_id: this.client_id}
-              ];
-
-            // Request a user's channel list
-            if (username) {
-              this.socket.emit('list_user_channels', {
-                id: peer_obj[0].client_id,
-                username: username,
-                channel_name: channel_name
-              });
-            }
-
-            // Request all channels list
-            else if (!username) {
-              this.socket.emit('list_channels', {
-                channel_name: channel_name
-              });
-            }
-            break;
-
-          // /NICK - Changes a users name
-          case command == 'nick' :
-            var
-              match               = message.split(/\s+/),
-              username            = (match) ? (match.length > 1) ? match[1] : false : false,
-              client_model        = this.getClientModel(),
-              old_username        = client_model.get('username');
-            if (username) {
-              this.socket.emit('username_change', {
-                channel_name: channel_name,
-                old_username: old_username,
-                new_username: username
-              });
-            } else {
-              return false;
-            }
-            break;
-
-          // /PART - Leave a channel (UI button should send the same message to peers)
-          case command == 'part' || command == 'close' :
-            var
-              channel_label_elm       = this.getUserChannelLabelContainerElm(channel_name),
-              channel_button          = channel_label_elm.find('.button');
-            channel_button.trigger('click');
-            break;
-
-          // /PARTALL - Leaves all open channels
-          case command == 'partall' || command == 'closeall' :
-            $('.pc-channel-label').each(function(id, elm) {
-              $(elm).find('.button').trigger('click');
-            });
-            break;
-
-          // /PING - Send a ping request to peer
-          // @todo - modify so you can /ping yourself
-          // @todo - should get an error message when attempts are made to ping a user who doesn't exist
-          case command == 'ping' :
-            var
-              self                    = this,
-              match                   = message.split(/\s+/),
-              username                = (match) ? (match.length > 1) ? match[1] : false : false,
-              peer_objs               = this.getPeerConnections(),
-              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
-                if (po.username == username) {
-                  return true;
-                }
-              });
-
-            // Add message to window
-            this.addMessageToWindow({
-              username: this.getClientModel().get('username'),
-              message: username,
-              id: this.client_id,
-              channel_name: channel_name,
-              template: 'userMessagePingRequest'
-            });
-
-            //// Send message to peers w/ the specified user name
-            _.each(peer_obj_w_name, function(po) {
-              self.sendMessageToPeer('peer-message-ping', po.client_id, channel_name, 'request');
-            });
-            break;
 
           // /IGNORE - Ignore/un-ignore a peer
           // @todo - should have an error message when ignoring a peer who does not exist
@@ -1336,6 +1207,205 @@ define([
             }
             break;
 
+
+          // /JOIN - Join/switch to a channel
+          case command == 'join' :
+            var
+              match         = message.match(/#(\w+)/),
+              channel       = (match) ? match[1] : false;
+            if (channel) {
+              this.router.navigate(channel, {trigger: true, replace: true});
+            } else {
+              return false;
+            }
+            break;
+
+
+          // /LIST - Shows available channels, number of people in those channels
+          // @todo - should show an error when querying a user that does not exist (or is now offline)
+          case command == 'list' :
+            var
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(),
+              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+                if (po.username == username) {
+                  return true;
+                }
+              }),
+              peer_obj                = peer_obj_w_name.length ? peer_obj_w_name : [
+                {client_id: this.client_id}
+              ];
+
+            // Request a user's channel list
+            if (username) {
+              this.socket.emit('list_user_channels', {
+                id: peer_obj[0].client_id,
+                username: username,
+                channel_name: channel_name
+              });
+            }
+
+            // Request all channels list
+            else if (!username) {
+              this.socket.emit('list_channels', {
+                channel_name: channel_name
+              });
+            }
+            break;
+
+
+          // /ME - Sends an "action" message
+          case command == 'me' :
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: message.replace('/me ', ''),
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessageAction'
+            });
+            this.sendMessageToAllPeers('group-message-me', channel_name, message);
+            break;
+
+
+          // /MSG /NOTICE /QUERY /CHAT - Send message to a peer at a specified name
+          // @todo - modify so you can /msg yourself
+          // @todo - should show an error message when targeted user does not exist (or is now offline)
+          case command == 'msg' || command == 'notice' || command == 'query' || command == 'chat' :
+            var
+              self                    = this,
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(),
+              peer_obj_w_name         = _.filter(peer_objs, function(po) {
+                if (po.username == username) {
+                  return true;
+                }
+              }),
+              clean_message           = message.replace(/\/msg |\/notice |\/query/, '').replace(username, '');
+
+            // Add message to window
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: clean_message,
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessagePrivate'
+            });
+
+            // Send message to peers w/ the choosen user name
+            _.each(peer_obj_w_name, function(po) {
+              self.sendMessageToPeer('group-message-msg', po.client_id, channel_name, clean_message);
+            });
+            break;
+
+
+          // /NICK - Changes a users name
+          case command == 'nick' :
+            var
+              match               = message.split(/\s+/),
+              username            = (match) ? (match.length > 1) ? match[1] : false : false,
+              client_model        = this.getClientModel(),
+              old_username        = client_model.get('username');
+            if (username) {
+              this.socket.emit('username_change', {
+                channel_name: channel_name,
+                old_username: old_username,
+                new_username: username
+              });
+            } else {
+              return false;
+            }
+            break;
+
+
+          // /PART - Leave a channel (UI button should send the same message to peers)
+          case command == 'part' || command == 'close' :
+            var
+              channel_label_elm       = this.getUserChannelLabelContainerElm(channel_name),
+              channel_button          = channel_label_elm.find('.button');
+            channel_button.trigger('click');
+            break;
+
+          // /PARTALL - Leaves all open channels
+          case command == 'partall' || command == 'closeall' :
+            $('.pc-channel-label').each(function(id, elm) {
+              $(elm).find('.button').trigger('click');
+            });
+            break;
+
+
+          // /PING - Send a ping request to peer
+          // @todo - modify so you can /ping yourself
+          // @todo - should get an error message when attempts are made to ping a user who doesn't exist
+          case command == 'ping' :
+            var
+              self                    = this,
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(),
+              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+                if (po.username == username) {
+                  return true;
+                }
+              });
+
+            // Add message to window
+            this.addMessageToWindow({
+              username: this.getClientModel().get('username'),
+              message: username,
+              id: this.client_id,
+              channel_name: channel_name,
+              template: 'userMessagePingRequest'
+            });
+
+            //// Send message to peers w/ the specified user name
+            _.each(peer_obj_w_name, function(po) {
+              self.sendMessageToPeer('peer-message-ping', po.client_id, channel_name, 'request');
+            });
+            break;
+
+
+          // /RTC - Retrieves WebRTC related information on a given user
+          case command == 'rtc' :
+            var
+              match                   = message.split(/\s+/),
+              username                = (match) ? (match.length > 1) ? match[1] : false : false,
+              peer_objs               = this.getPeerConnections(),
+              peer_obj_w_name         = _.filter(peer_objs, function(po, id) {
+                if (po.username == username) {
+                  return true;
+                }
+              });
+            if (username && _.size(peer_obj_w_name)) {
+              var
+                peer_obj        = peer_obj_w_name[0],
+                pc              = peer_obj.pc,
+                lsdp            = pc.localDescription.sdp,
+                rsdp            = pc.remoteDescription.sdp;
+              this.addMessageToWindow({
+                username: this.getClientModel().get('username'),
+                message: {
+                  lsdp: lsdp,
+                  rsdp: rsdp,
+                  username: username
+                },
+                id: this.client_id,
+                channel_name: channel_name,
+                template: 'userMessageRtc'
+              });
+            } else {
+              this.addMessageToWindow({
+                username: this.getClientModel().get('username'),
+                message: username,
+                id: this.client_id,
+                channel_name: channel_name,
+                template: 'userMessageRtcError'
+              });
+            }
+            break;
+
+
           // /WHOIS - Performs a whois query on a given user
           case command == 'whois' :
             var
@@ -1356,17 +1426,6 @@ define([
             } else {
               return false;
             }
-            break;
-
-          // /HELP - Loads a help message
-          case command == 'help' || command == 'h' || command == '?' :
-            this.addMessageToWindow({
-              username: this.getClientModel().get('username'),
-              message: '',
-              id: this.client_id,
-              channel_name: channel_name,
-              template: 'userMessageHelp'
-            });
             break;
         }
         return true;

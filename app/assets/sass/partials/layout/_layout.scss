@@ -89,7 +89,8 @@
       .user-message-list-user,
       .user-message-whois,
       .user-message-whois-request,
-      .user-message-whois-error {
+      .user-message-whois-error,
+      .user-message-rtc {
         .user-col {
         }
         .user-name {
@@ -114,16 +115,21 @@
       .user-message-ignore-remove,
       .user-message-whois,
       .user-message-whois-request,
-      .user-message-whois-error {
+      .user-message-whois-error,
+      .user-message-error {
         color: $heros-blue;
         font-weight: bold;
       }
+
+      // /HELP
       .user-message-help {
         .command {
           color: $heros-blue;
           font-family: courier, monospace;
         }
       }
+
+      // /LIST
       .user-message-list-all,
       .user-message-list-user {
         .list-title {
@@ -140,6 +146,16 @@
         }
         .channel-info {
           color: $heros-blue;
+        }
+      }
+
+      // /RTC
+      .user-message-rtc,
+      .user-message-rtc-error {
+        .user-name,
+        .user-message {
+          color: $heros-blue;
+          font-weight: bold;
         }
       }
     }
