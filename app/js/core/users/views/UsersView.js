@@ -244,7 +244,6 @@ define([
           template: 'userMessageWhois'
         });
       } else {
-        console.log(msg);
         this.addMessageToWindow({
           username: this.getClientModel().get('username'),
           message: msg.username,
@@ -560,7 +559,7 @@ define([
         // Configure a new PeerSock object
         ps[peer_id] = PeerSock({
           socket: client_model.get('socket'),
-          debug: false
+          debug: true
         });
 
         // Set initial peer options
@@ -1121,8 +1120,7 @@ define([
       var
         commands        = ['clear', 'join', 'me', 'msg', 'nick', 'notice', 'part', 'close', 'partall', 'closeall', 'ping', 'query', 'quit', 'ignore', 'whois', 'chat', 'help', 'h', 'list'],
         match           = message.match(/^\/(\w+)/),
-        command         = (match) ? match[1] : false,
-        success         = false;
+        command         = (match) ? match[1] : false;
 
       // Execute existing command
       if (command && _.indexOf(commands, command) != -1) {

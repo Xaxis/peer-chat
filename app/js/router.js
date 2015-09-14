@@ -1,3 +1,5 @@
+// @todo - creating "loading message" system, including information when a timeout/error occurs
+
 // @todo - write feature that determines if a peer is idle or not in a given channel
 
 // @todo - prevent server from crashing from various UX states and allow for reconnection of peers when
@@ -7,9 +9,7 @@
 
 // @todo - separate server code into "npm" modules loaded in by require
 
-// @todo - set 'client_id' on connected peers "peer object" upon connection (so this doesn't need to be done elsewhere)
-
-// @todo - determine/establish maximum peer connections a user can have in correlation w/ number of channels
+// @todo - determine/establish maximum peer connections a user can have in correlation w/ number of channels and bandwidth
 
 // @todo - solve for icecandidate failures by attempting to reconnect failed peer connections
 /**

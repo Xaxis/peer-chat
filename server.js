@@ -12,7 +12,7 @@ var
     var
       name        = 'anony' + _.random(100000, 999999);
     if (usernames.hasOwnProperty(name)) {
-      return uniqueUsername( socket );
+      return uniqueUsername(socket);
     } else {
       usernames[name] = {
         id: socket.id
@@ -44,7 +44,7 @@ io.sockets.on('connection', function(socket) {
       console.log('User ' + socket.id + ' ATTEMPTING registration w/o channel');
       socket.emit('ready_init', {
         channel_name: channel,
-        username: username
+        username: uniqueUsername(socket)
       });
       return false;
     }
