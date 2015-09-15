@@ -1,3 +1,9 @@
+// @todo - modify the peers that are sent as ready to those that are ACTUALLY ready
+// those that have sent an indicator back to the server which sets a flag confirming there readiness
+
+// @todo - test if connecting to peers slower or "one at a time" perhaps w/ some type of "promise"
+// convention indicating when the next one should connect solves any of the ICE related failures
+
 // @todo - solve for when socket.io times out, solve for when ICE fails on a connection
 
 // @todo - creating "loading message" system, including information when a timeout/error occurs
@@ -14,6 +20,8 @@
 // @todo - determine/establish maximum peer connections a user can have in correlation w/ number of channels and bandwidth
 
 // @todo - solve for icecandidate failures by attempting to reconnect failed peer connections
+
+// @todo - implement chrome-chrome, firefox-firefox, chrome-firefox, firefox-chrome functionality
 /**
  * Router module
  */
@@ -161,7 +169,43 @@ define([
     socketOnReadyChannel: function( info ) {
       console.log('Registering client: ', info.client_id, info);
       var
-        self        = this;
+        self        = this,
+
+
+
+      // @todo - placing the peer connection creation in a sequential order w/ a pause between
+      // connections seemingly FIXED the ice failure problem. This either fixed things because
+      // google's stun server throttles the number of allowed connection requests OR possibly
+      // because for whatever reason peer connection negotiation fails when to many are created
+      // simultaneously.
+      // NEXT TEST - Setup my own stun server with no throttling to verify google throttling hypothesis
+        i           = 0,
+        interval    = function() {
+          setTimeout(function() {
+            if (i < info.peers.length) {
+              var peer_id = info.peers[i];
+
+              // Register peer listeners AND/OR register a new channel to an existing peer
+              self.usersView.registerPeer(info.client_id, peer_id, info.channel_name, false);
+
+              // Inform listening peers registered on a given channel of new peer connection
+              self.signal.send('peer_connect_' + info.channel_name, peer_id, info.client_id, {
+                command: 'connect',
+                channel_name: info.channel_name
+              });
+
+              interval();
+            }
+            i++;
+          }, 1000);
+        };
+
+
+      // Start loop
+      interval();
+
+
+
 
       // Update #channel uri
       this.app_router.navigate(info.channel_name, {trigger: true, replace: true});
@@ -176,14 +220,14 @@ define([
       // Iterate through active hosts in a given channel and connected to channel's peers
       _.each(info.peers, function (peer_id) {
 
-        // Register peer listeners AND/OR register a new channel to an existing peer
-        self.usersView.registerPeer(info.client_id, peer_id, info.channel_name, false);
-
-        // Inform listening peers registered on a given channel of new peer connection
-        self.signal.send('peer_connect_' + info.channel_name, peer_id, info.client_id, {
-          command: 'connect',
-          channel_name: info.channel_name
-        });
+        //// Register peer listeners AND/OR register a new channel to an existing peer
+        //self.usersView.registerPeer(info.client_id, peer_id, info.channel_name, false);
+        //
+        //// Inform listening peers registered on a given channel of new peer connection
+        //self.signal.send('peer_connect_' + info.channel_name, peer_id, info.client_id, {
+        //  command: 'connect',
+        //  channel_name: info.channel_name
+        //});
       });
     },
 
