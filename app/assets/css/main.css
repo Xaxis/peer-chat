@@ -5254,6 +5254,9 @@ body {
       .peer-chat .pc-channels-overview .pc-channel-label.control,
       .peer-chat .pc-channels-overview .pc-channel-label--add-channel.control {
         font-weight: bold; }
+      .peer-chat .pc-channels-overview .pc-channel-label .text,
+      .peer-chat .pc-channels-overview .pc-channel-label--add-channel .text {
+        font-weight: bold; }
       .peer-chat .pc-channels-overview .pc-channel-label .button,
       .peer-chat .pc-channels-overview .pc-channel-label--add-channel .button {
         display: inline-block;

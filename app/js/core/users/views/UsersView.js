@@ -118,6 +118,7 @@ define([
         'getUserChannelContainerElm',
         'addUserChannelLabel',
         'getUserChannelLabelContainerElm',
+        'updateChannelCount',
         'userChannelLabelClose',
         'userChannelLabelSwitch',
         'addUserChannelBlur',
@@ -342,11 +343,28 @@ define([
       $('.pc-channel-label').removeClass('active');
       if (!channel_elm.length) {
         $('.pc-channel-label--add-channel').after($(this.templates.userChannelLabel({
-          channelid: channel
+          channelid: channel,
+          message: {
+            count: 0
+          }
         })).addClass('active'));
       } else {
         channel_elm.addClass('active');
       }
+    },
+
+    /**
+     * Updates a channel label element w/ the number of users in a given channel.
+     *
+     * @param channel {String}        The channel id
+     * @param count {Number}          The number of users in a given channel
+     */
+    updateChannelCount: function( channel, count ) {
+      var
+        channel_container       = this.getUserChannelLabelContainerElm(channel),
+        channel_elm             = channel_container.find('.channelcount'),
+        curr_count              = parseInt(channel_elm.html());
+      channel_elm.html(curr_count + count);
     },
 
     /**
@@ -392,8 +410,8 @@ define([
       e.stopPropagation();
       var
         target              = $(e.currentTarget),
-        channel             = target.prev('.text').html(),
         parent              = target.closest('.pc-channel-label'),
+        channel             = parent.find('.text').html(),
         prev_channel        = parent.prev('.pc-channel-label'),
         next_channel        = parent.next('.pc-channel-label'),
         channel_to_load     = '',
@@ -690,7 +708,7 @@ define([
     },
 
     /**
-     * Adds user list item element to the user list.
+     * Adds user list item element to the user list and updates the channel count in the channel label.
      *
      * @param peer_id {String}            The socket id of the peer
      * @param username {String}           The user name of the peer
@@ -705,6 +723,7 @@ define([
           peer_id: peer_id,
           username: username
         })).addClass(peer_id == this.client_id ? 'me' : ''));
+        this.updateChannelCount(channel_name, 1);
       }
     },
 
@@ -718,7 +737,8 @@ define([
     removeFromUserList: function( peer_id, channels ) {
       var
         self          = this,
-        peers         = this.getPeerConnections();
+        peers         = this.getPeerConnections(),
+        count         = true;
 
       if (peers.hasOwnProperty(peer_id)) {
         _.each(peers[peer_id].channels, function(channel) {
@@ -735,6 +755,12 @@ define([
               channel_name: cname,
               template: 'userMessageLeftChannel'
             });
+
+            // Update channel count
+            if (count) {
+              count = false;
+              self.updateChannelCount(cname, -1);
+            }
           }
         });
 

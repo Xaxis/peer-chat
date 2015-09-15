@@ -179,7 +179,7 @@ define([
         // Register peer listeners AND/OR register a new channel to an existing peer
         self.usersView.registerPeer(info.client_id, peer_id, info.channel_name, false);
 
-        // Inform all other listening peers registered on a given channel of new peer
+        // Inform listening peers registered on a given channel of new peer connection
         self.signal.send('peer_connect_' + info.channel_name, peer_id, info.client_id, {
           command: 'connect',
           channel_name: info.channel_name
