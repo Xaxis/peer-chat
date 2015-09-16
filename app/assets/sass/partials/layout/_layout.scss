@@ -170,6 +170,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     .user-list-item {
+      font-size: 0.80rem;
       padding: 4px 6px;
       overflow: hidden;
       border-bottom: 1px solid $default-border-color;
@@ -179,7 +180,7 @@
         padding: 0;
       }
       &.me {
-        font-weight: 800;
+        font-weight: bold;
       }
     }
   }

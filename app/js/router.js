@@ -41,7 +41,8 @@ define([
   return {
 
     // Socket.io
-    socket: io.connect('//localhost:9222'),
+    //socket: io.connect('//localhost:9222'),
+    socket: io.connect('http://vcdn.io:9222'),
 
     // Signaling method
     signal: {},
@@ -197,7 +198,7 @@ define([
               interval();
             }
             i++;
-          }, 1000);
+          }, 2000);
         };
 
 

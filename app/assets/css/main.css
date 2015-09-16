@@ -5379,6 +5379,7 @@ body {
     html:not(.csscalc) .peer-chat .pc-col-2, html:not(.csscalc) .peer-chat .user-list {
       width: 24.2%; }
     .peer-chat .pc-col-2 .user-list-item, .peer-chat .user-list .user-list-item {
+      font-size: 0.80rem;
       padding: 4px 6px;
       overflow: hidden;
       border-bottom: 1px solid #dbdada;
@@ -5387,7 +5388,7 @@ body {
         border: 0;
         padding: 0; }
       .peer-chat .pc-col-2 .user-list-item.me, .peer-chat .user-list .user-list-item.me {
-        font-weight: 800; }
+        font-weight: bold; }
   .peer-chat .pc-window {
     height: 200px;
     padding: 4px 6px;
